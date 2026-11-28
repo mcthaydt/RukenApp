@@ -1,6 +1,7 @@
 <!--
-  The cookie notice (design 3.4), in two shapes: a small card at the bottom of every screen until the browser
-  chooses, which the screen above always keeps clear of, and, on /cookies, the whole screen's one card (sent there by a button that needs the yes).
+  The cookie notice (design 3.4), in two shapes: a card in front of every screen until the browser chooses, the
+  screen dimmed behind it and taking no press until an answer (so the card never sits on one of its buttons), and, on
+  /cookies, the whole screen's one card (sent there by a button that needs the yes).
   "I agree" is a plain form that works before scripts load; with scripts it does not reload the screen.
   "Not now" sends nothing and stores nothing: on the card it hides the card until the next visit.
 -->
@@ -16,8 +17,6 @@
     next,
     from,
     card = false,
-    front = false,
-    aboveBar = false,
     onNotNow,
     onAgreed,
   }: {
@@ -27,12 +26,8 @@
     next: string;
     /** The page the notice was opened on, so a yes keeps the maker who brought the person. */
     from: string;
-    /** The small card at the bottom of a screen, not the screen's own card. */
+    /** The card in front of a screen, not the screen's own card. */
     card?: boolean;
-    /** The card asks in front of the screen, which waits dimmed behind it until an answer, instead of at its foot. */
-    front?: boolean;
-    /** The bar of Home and You is on this screen, so the card sits above it. */
-    aboveBar?: boolean;
     onNotNow: () => void;
     /** Runs once "I agree" has been kept, on the same screen (a press that waited for the yes). */
     onAgreed?: () => void;
@@ -52,33 +47,6 @@
 
   let sending = $state(false);
   let agreeButton = $state<HTMLButtonElement>();
-  let cardBox = $state<HTMLElement>();
-
-  // The card never covers a button of the screen under it (the owner's rule: no two controls ever overlap). It tells the
-  // page how much of the window's foot it takes, with a line of air, as --consent-room; the screen's view ends above it
-  // (src/lib/look.css). Measured, since its height changes with the window, the words and the why line.
-  $effect(() => {
-    if (front) return;
-    const box = cardBox;
-    if (box === undefined) return;
-    // Moving above the bar or off it changes where the card stands but not its size, so the card is placed here,
-    // as the markup places it, and measured again each time.
-    box.classList.toggle("above-bar", aboveBar);
-    const root = document.documentElement;
-    const measure = () => {
-      const room = Math.ceil(innerHeight - box.getBoundingClientRect().top + 8);
-      root.style.setProperty("--consent-room", `${String(Math.max(room, 0))}px`);
-    };
-    measure();
-    const watcher = new ResizeObserver(measure);
-    watcher.observe(box);
-    addEventListener("resize", measure);
-    return () => {
-      watcher.disconnect();
-      removeEventListener("resize", measure);
-      root.style.removeProperty("--consent-room");
-    };
-  });
 
   // A press that needs the yes opened the card: "I agree" takes the keyboard's focus, so the card is the next thing a
   // person who pressed with the keyboard reaches (Tab never gets past a feed that never ends).
@@ -86,13 +54,13 @@
     if (card && reason !== null) agreeButton?.focus();
   });
 
-  // In front, the card is a dialog that holds the screen until an answer: everything behind it takes no press and no
-  // focus, so nothing of the page is ever under a button of the card, and the pad and Tab stay on its answers. It is
-  // drawn open from the server, so it asks before scripts load; once they have, it is opened again as the screen's one
-  // question. Escape is Not now.
-  let frontBox = $state<HTMLDialogElement>();
+  // The card is a dialog that holds the screen until an answer: everything behind it takes no press and no focus, so
+  // nothing of the page is ever under a button of the card, and the pad and Tab stay on its answers. It is drawn open
+  // from the server, so it asks before scripts load; once they have, it is opened again as the screen's one question.
+  // Escape is Not now.
+  let cardBox = $state<HTMLDialogElement>();
   $effect(() => {
-    const box = frontBox;
+    const box = cardBox;
     if (box === undefined || box.matches(":modal")) return;
     box.close();
     box.showModal();
@@ -136,8 +104,15 @@
   </form>
 {/snippet}
 
-{#if card && front}
-  <dialog bind:this={frontBox} class="consent front" aria-labelledby="consent-title" open oncancel={escaped}>
+{#if card}
+  <dialog
+    bind:this={cardBox}
+    class="consent"
+    aria-labelledby="consent-title"
+    tabindex="-1"
+    open
+    oncancel={escaped}
+  >
     <h2 id="consent-title">Cookies?</h2>
     {#if reason !== null}
       <p class="why">{WHY[reason]}</p>
@@ -153,24 +128,6 @@
     </div>
     <p class="note"><a class="go" href="/privacy">What we keep</a></p>
   </dialog>
-{:else if card}
-  <!-- Small, so the screen keeps most of the window: the question, its one line, the two answers, and What we keep
-       beside the question. The whole story is on What we keep, and on the notice's own screen. -->
-  <aside bind:this={cardBox} class="consent" class:above-bar={aboveBar} aria-labelledby="consent-title">
-    <div class="consent-top">
-      <h2 id="consent-title">Cookies?</h2>
-      <a class="go" href="/privacy">What we keep</a>
-    </div>
-    {#if reason !== null}
-      <p class="why">{WHY[reason]}</p>
-    {:else}
-      <p>We save a few small things in your browser. Nothing is saved until you say yes.</p>
-    {/if}
-    <div class="consent-answers">
-      {@render answer()}
-      <button type="button" class="safe" onclick={onNotNow}>Not now</button>
-    </div>
-  </aside>
 {:else}
   <main class="card">
     <h1>Cookies?</h1>

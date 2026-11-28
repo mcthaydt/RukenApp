@@ -251,8 +251,6 @@
 {#if !data.consented && (!notNow || consentAsk.reason !== null) && !READ_IN_PEACE.includes(page.route.id ?? "")}
   <Notice
     card
-    front
-    aboveBar={barShown}
     reason={consentAsk.reason}
     next={page.url.pathname + page.url.search}
     from={page.url.pathname + page.url.search}

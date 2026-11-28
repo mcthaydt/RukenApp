@@ -1026,7 +1026,7 @@ form > * + button:not(.quiet) {
   display: flex;
   flex-direction: column;
   /* The whole view: the window above the pinned buttons or the bar (--foot, the app view). */
-  min-height: calc(100dvh - var(--view-foot));
+  min-height: calc(100dvh - var(--foot, 0px));
   overflow-x: clip;
 }
 
@@ -3267,8 +3267,8 @@ main.helpdesk {
   --above-main: 4.5rem;
   --below-main: 1rem;
 
-  min-height: calc(100vh - var(--view-foot) - var(--above-main) - var(--below-main));
-  min-height: calc(100dvh - var(--view-foot) - var(--above-main) - var(--below-main));
+  min-height: calc(100vh - var(--foot, 0px) - var(--above-main) - var(--below-main));
+  min-height: calc(100dvh - var(--foot, 0px) - var(--above-main) - var(--below-main));
   margin-bottom: var(--below-main);
 }
 
@@ -5679,8 +5679,8 @@ video[data-still][data-loading] {
   transform: translateY(calc(100% + 2rem));
 }
 
-/* While the cookie card asks at the foot of the window, the corner button waits under it instead of being half hidden. */
-body:has(.consent) .about .tofeed {
+/* While the cookie card asks in front of the page, the corner button waits under it. */
+body:has(dialog.consent) .about .tofeed {
   visibility: hidden;
 }
 
@@ -5789,29 +5789,25 @@ html:has(main.about) :is(a, button, summary, label) {
   text-wrap: balance;
 }
 
-/* The cookie notice (src/features/consent/Notice.svelte): a small card at the bottom of every screen until the browser
-   chooses, above the bar of Home and You where that is shown. The screen's view ends above it (--consent-room, below),
-   so it never floats over a button of the page (the owner's rule: no two controls ever overlap). With nothing moving
-   behind it, that card is solid, as glass is only over what moves (the owner, 2026-11-27). Its two answers are one size and
-   one weight, side by side. */
-aside.consent {
-  --glass-bg: var(--felt-deep);
-  --glass-filter: none;
-  --glass-edge: 0 0 transparent;
-  --glass-ink: none;
-  --glass-pay: var(--pay);
-  --glass-safe: var(--felt-raised);
-}
-
-.consent {
+/* The cookie notice (src/features/consent/Notice.svelte): a card in the middle of every screen until the browser
+   chooses, in front of a dim of the screen, which waits behind it and takes no press until an answer. So it never sits
+   on a button of the page (the owner's rule: no two controls ever overlap), on any screen or size. It is a panel over
+   the screen, so it is the darker panel glass where what is behind moves, as Share is, and solid on a plain page. Its
+   two answers are one size and one weight: side by side, or one above the other on the smallest phone, each as wide as
+   the other. */
+dialog.consent {
+  --glass-bg: var(--glass-panel-bg);
+  --glass-filter: var(--glass-panel-filter);
   position: fixed;
-  bottom: max(0.75rem, env(safe-area-inset-bottom));
-  left: 50%;
+  inset: 0;
   z-index: 30;
-  translate: -50% 0;
   box-sizing: border-box;
   width: min(100% - 1.5rem, var(--width-read));
-  padding: 0.875rem 1rem 1rem;
+  max-height: calc(100% - 1.5rem);
+  margin: auto;
+  overflow-y: auto;
+  border: 0;
+  padding: 1rem 1.25rem;
   border-radius: var(--radius-card);
   background: var(--glass-bg);
   -webkit-backdrop-filter: var(--glass-filter);
@@ -5832,17 +5828,15 @@ aside.consent {
   box-shadow: var(--glass-edge);
 }
 
-.consent.above-bar {
-  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.25rem);
+/* The card holds the focus as it opens, so it draws no ring of its own. */
+dialog.consent:focus {
+  outline: none;
 }
 
-/* The question on the left and What we keep on the right of one line. */
-.consent-top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
+dialog.consent::backdrop {
+  background: var(--dim-bg);
+  -webkit-backdrop-filter: var(--dim-filter);
+  backdrop-filter: var(--dim-filter);
 }
 
 .consent h2 {
@@ -5853,9 +5847,14 @@ aside.consent {
 .consent .why {
   font-weight: 600;
 }
-
 .consent p {
   margin: 0.5rem 0 0;
+}
+
+/* What we keep, under I agree and Not now, sits as far below them as the words above sit (the owner, 2026-11-23: "use
+   consistent spacing and margin, the what we keep is too close to buttons"): a rem, to its words. */
+.consent .consent-answers + p {
+  margin-top: 1rem;
 }
 
 .consent a {
@@ -5870,7 +5869,7 @@ aside.consent {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
-  margin-top: 0.75rem;
+  margin-top: 1rem;
 }
 
 .consent-answers > form,
@@ -5889,76 +5888,9 @@ aside.consent {
   margin: 0;
 }
 
-/* In front of the screen (Notice.svelte's `front`): the card stands in the middle of the window, over a dim of the
-   screen, which waits behind it until an answer. It is a panel over the screen, so it is the darker panel glass where
-   what is behind moves, as Share is, and solid on a plain page. Its answers sit side by side, or one above the other on the smallest
-   phone, each as wide as the other; What we keep sits as far below them as the words above sit. */
-dialog.consent.front {
-  --glass-bg: var(--glass-panel-bg);
-  --glass-filter: var(--glass-panel-filter);
-  inset: 0;
-  translate: none;
-  max-height: calc(100% - 1.5rem);
-  margin: auto;
-  overflow-y: auto;
-  border: 0;
-  padding: 1rem 1.25rem;
-}
-
-dialog.consent.front:focus {
-  outline: none;
-}
-
-dialog.consent.front::backdrop {
-  background: var(--dim-bg);
-  -webkit-backdrop-filter: var(--dim-filter);
-  backdrop-filter: var(--dim-filter);
-}
-
-.consent.front .consent-answers {
-  margin-top: 1rem;
-}
-
-.consent.front .consent-answers + p {
-  margin-top: 1rem;
-}
-
 @media (max-width: 22rem) {
-  .consent.front .consent-answers {
+  .consent-answers {
     grid-template-columns: 1fr;
-  }
-}
-
-/* The notice's own screen (/cookies) keeps its answers one above the other on the smallest phone. */
-@media (max-width: 22rem) {
-  main.card .consent-answers {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* A phone held sideways: the bar stands along the right edge, so the card stays at the foot, clear of it, and puts its
-   answers beside its words to keep the screen above it as tall as it can. */
-@media (orientation: landscape) and (max-height: 449px) {
-  aside.consent,
-  aside.consent.above-bar {
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
-    left: max(0.75rem, env(safe-area-inset-left));
-    translate: none;
-    display: grid;
-    grid-template-columns: 1fr 15rem;
-    column-gap: 1rem;
-    align-items: center;
-    width: calc(100% - 1.5rem - var(--rail, 0px));
-  }
-
-  aside.consent > p {
-    grid-column: 1;
-  }
-
-  aside.consent .consent-answers {
-    grid-row: 1 / span 2;
-    grid-column: 2;
-    margin-top: 0;
   }
 }
 
@@ -5992,22 +5924,13 @@ html {
    places, or above a step's pinned Back and Save (--foot, set beside each), so neither ever covers what is on the
    screen. A screen taller than its view (a long help guide, the terms) scrolls inside it, by touch, wheel and keys, with
    no bar showing. The landing page is a web page and keeps its own scrolling. */
-/* The view's foot is whichever is taller: the bar or a step's pinned row (--foot), or the cookie card standing above the
-   bar until the browser answers (--consent-room, measured by src/features/consent/Notice.svelte). Nothing on the screen
-   is ever under either, so no button of the page sits under the card. */
-:root {
-  --view-foot: max(var(--foot, 0px), var(--consent-room, 0px));
-}
-
-/* While the cookie card stands at its foot, the landing page works as the app does: its words scroll in the view above
-   the card, never under it. */
-:root:is(:not(:has(main.about)), :has(aside.consent)) {
+:root:not(:has(main.about)) {
   height: 100%;
   overflow: hidden;
 }
 
-:root:is(:not(:has(main.about)), :has(aside.consent)) body {
-  height: calc(100% - var(--view-foot));
+:root:not(:has(main.about)) body {
+  height: calc(100% - var(--foot, 0px));
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;

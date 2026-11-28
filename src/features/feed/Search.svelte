@@ -142,7 +142,7 @@
   /* The whole window above the bar: the field at the top and the results under it, which scroll on their own. */
   .search {
     position: fixed;
-    inset: 0 0 var(--view-foot, 0);
+    inset: 0 0 var(--foot, 0);
     display: flex;
     flex-direction: column;
     width: min(100%, calc(var(--width-read) + 2rem));

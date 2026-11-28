@@ -52,7 +52,7 @@
     justify-items: center;
     gap: 1rem;
     width: auto;
-    min-height: calc(100dvh - var(--consent-room, 0px));
+    min-height: 100dvh;
     margin: 0;
     padding: 5rem 1rem 6rem;
     text-align: center;

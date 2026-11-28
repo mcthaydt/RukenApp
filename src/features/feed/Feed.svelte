@@ -907,11 +907,9 @@
 <p class="gotit" role="status">{gotIt ? "Got it." : ""}</p>
 
 <style>
-  /* Until the browser answers the cookie question, the clips end above the card (--consent-room), so it never covers
-     their Play or the buttons beside them. */
   .feed {
     position: fixed;
-    inset: 0 0 var(--consent-room, 0px);
+    inset: 0;
     width: auto;
     margin: 0;
     overflow-y: auto;
@@ -923,7 +921,7 @@
     display: grid;
     place-items: center;
     width: auto;
-    min-height: calc(100dvh - var(--consent-room, 0px));
+    min-height: 100dvh;
     margin: 0;
     padding: 1rem 1rem 6rem;
     text-align: center;
@@ -933,7 +931,7 @@
   }
   section {
     position: relative;
-    height: calc(100dvh - var(--consent-room, 0px));
+    height: 100dvh;
     overflow: hidden;
     scroll-snap-align: start;
     scroll-snap-stop: always;
