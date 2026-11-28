@@ -34,64 +34,51 @@ function focusedName(page: Page): Promise<string | null> {
 }
 
 /**
- * On the feed up and down are its clips and its controls are one row (src/lib/pad-focus.ts), so a person goes right
- * along it: this does, from the first press, and gives each answer it lands on. Where right goes no further (the top
- * bar's end, or an empty feed with no clip's row) a person presses down, and so does this. With `stopAt` it stops the
- * moment a press lands on that answer, with the focus left there.
+ * Every answer the pad reaches, played with the pad alone as a person would, and no move ever changes the page. First
+ * it goes until it stands on an answer:
+ * - on the feed, right along it, since up and down are its clips and its controls are one row (src/lib/pad-focus.ts),
+ *   and down where right goes no further (the top bar's end, or an empty feed with no clips);
+ * - on any other screen, from the first press down the screen, and up from the bar when down stops there.
+ * Then each way from each answer found. With `stopAt` it stops the moment a press lands on that answer, with the focus
+ * left there.
  */
-async function rightAlongTheFeed(page: Page, stopAt: Answer | null = null): Promise<Set<Answer>> {
-  await pageHasSettled(page);
-  await page.mouse.move(0, 0);
-  const found = new Set<Answer>();
-  let way: number = PAD.right;
-  let last: string | null = null;
-  for (let step = 0; step < 40 && found.size < ANSWERS.length; step += 1) {
-    await pressPad(page, way);
-    expect(page.url(), "a move of the pad changed the page").toMatch(/\/$/);
-    const name = await focusedName(page);
-    if (isAnswer(name)) found.add(name);
-    if (stopAt !== null && name === stopAt) break;
-    way = name !== null && name === last ? PAD.down : PAD.right;
-    last = name;
-  }
-  return found;
-}
-
-/** Goes right along the feed to the answer, and presses A on it. */
-async function pressWithThePad(page: Page, wanted: Answer): Promise<void> {
-  await page.goto("/");
-  await rightAlongTheFeed(page, wanted);
-  expect(await focusedName(page), `the pad never reaches ${wanted}`).toBe(wanted);
-  await pressPad(page, PAD.a);
-}
-
-test("on the feed, the pad reaches I agree, Not now and What we keep", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("button", { name: "I agree" })).toBeVisible();
-  expect([...(await rightAlongTheFeed(page))].sort()).toEqual([...ANSWERS].sort());
-});
-
-/**
- * Every answer the pad reaches, played with the pad alone as a person would: from the first press, down the screen,
- * and up from the bar when down stops there, until it stands on an answer; then each way from each answer found. No
- * move ever changes the page.
- */
-async function answersThePadReaches(page: Page): Promise<string[]> {
+async function answersThePadReaches(page: Page, stopAt: Answer | null = null): Promise<string[]> {
   await pageHasSettled(page);
   await page.mouse.move(0, 0);
   const url = page.url();
+  const onFeed = new URL(url).pathname === "/";
   const found = new Set<string>();
   const press = async (way: number) => {
     await pressPad(page, way);
     expect(page.url(), "a move of the pad changed the page").toBe(url);
-    const name = await focusedName(page);
+    // On the feed up and down slide to the next clip even from the card, and once the slide settles the focus goes to
+    // that clip's Play: where a press lands is where the focus rests, not where it passes.
+    let name = await focusedName(page);
+    if (onFeed) {
+      for (let same = 0, tries = 0; same < 4 && tries < 30; tries += 1) {
+        await page.waitForTimeout(150);
+        const now = await focusedName(page);
+        same = now === name ? same + 1 : 0;
+        name = now;
+      }
+    }
     if (isAnswer(name)) found.add(name);
     return name;
   };
   let here = await press(PAD.right);
-  for (const way of [PAD.down, PAD.up]) {
-    for (let step = 0; step < 30 && !isAnswer(here); step += 1) here = await press(way);
+  if (onFeed) {
+    let last: string | null = null;
+    for (let step = 0; step < 40 && !isAnswer(here); step += 1) {
+      const way = here !== null && here === last ? PAD.down : PAD.right;
+      last = here;
+      here = await press(way);
+    }
+  } else {
+    for (const way of [PAD.down, PAD.up]) {
+      for (let step = 0; step < 30 && !isAnswer(here); step += 1) here = await press(way);
+    }
   }
+  if (stopAt !== null && here === stopAt) return [...found].sort();
   // About the card from there: each way from each answer found. The question stays put while the page scrolls, so
   // standing on an answer again by script moves nothing.
   const waiting = [...found];
@@ -103,11 +90,27 @@ async function answersThePadReaches(page: Page): Promise<string[]> {
       }, from);
       const before = found.size;
       const landed = await press(way);
+      if (stopAt !== null && landed === stopAt) return [...found].sort();
       if (found.size > before && landed !== null) waiting.push(landed);
     }
   }
   return [...found].sort();
 }
+
+/** On the feed, goes with the pad to the answer, and presses A on it. */
+async function pressWithThePad(page: Page, wanted: Answer): Promise<void> {
+  await page.goto("/");
+  await answersThePadReaches(page, wanted);
+  expect(await focusedName(page), `the pad never reaches ${wanted}`).toBe(wanted);
+  await pressPad(page, PAD.a);
+}
+
+test("on the feed, the pad reaches I agree, Not now and What we keep", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "I agree" })).toBeVisible();
+  expect(await answersThePadReaches(page)).toEqual([...ANSWERS].sort());
+});
 
 // Every other screen, the card or the whole-screen question (sign in).
 for (const path of SCREENS) {
