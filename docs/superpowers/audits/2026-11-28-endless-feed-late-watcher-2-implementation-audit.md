@@ -4,7 +4,8 @@
 - Commit examined: `805ce42` (round 1 examined `6df05c4`; the only new commit is `805ce42`)
 - Lane: 2 (`src/features/feed/Feed.svelte`, shared by every feed tab). One fresh review.
 - Reviewer: fresh session, Opus 5.5, medium. Written 2026-11-28 06:59 UTC (from `date`).
-- Verdict: **FAIL: 1 red.** R1 and R2 from round 1 are fixed in the code and the notes, CI is green, and nothing else changed. The one red is in the pull request's body only (R3): it does not name the existing journey this round changed. The fix needs no new commit.
+- Final verdict (2026-11-28 07:01 UTC, from `date`): **PASS** at `805ce42`. R3 cleared: the body now has an "Existing journey changed" section naming `feed-controls.test.ts:462`, why it changed (the 27 ms race, run 46115550409), that its checks are unchanged, and the `:438` link; head still `805ce42`, attribution lines first, last line "Requested by **McThayDT**".
+- First verdict: **FAIL: 1 red.** R1 and R2 from round 1 are fixed in the code and the notes, CI is green, and nothing else changed. The one red is in the pull request's body only (R3): it does not name the existing journey this round changed. The fix needs no new commit.
 
 ## What changed since round 1
 
