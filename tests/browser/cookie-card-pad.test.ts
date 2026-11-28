@@ -67,42 +67,38 @@ test("on the feed, the pad reaches I agree, Not now and What we keep", async ({ 
 });
 
 /**
- * Every answer the pad reaches, walked as `padReachesEverything` walks (tests/browser/support/pad.ts): from the first
- * press, every way from every control it has reached, each one focused again as a person last left it.
+ * Every answer the pad reaches, played with the pad alone as a person would: from the first press, down the screen,
+ * and up from the bar when down stops there, until it stands on an answer; then each way from each answer found. No
+ * move ever changes the page.
  */
 async function answersThePadReaches(page: Page): Promise<string[]> {
   await pageHasSettled(page);
   await page.mouse.move(0, 0);
   const url = page.url();
-  const mark = () =>
-    page.evaluate(() => {
-      const one = document.activeElement;
-      if (!(one instanceof HTMLElement) || one === document.body) return null;
-      if (!one.hasAttribute("data-pad-seen"))
-        one.setAttribute("data-pad-seen", String(document.querySelectorAll("[data-pad-seen]").length));
-      return one.getAttribute("data-pad-seen");
-    });
-  await pressPad(page, PAD.right);
-  const first = await mark();
-  expect(first, "the pad's first press focused nothing").not.toBeNull();
-  const reached = new Set([first ?? ""]);
-  const waiting = [first ?? ""];
   const found = new Set<string>();
+  const press = async (way: number) => {
+    await pressPad(page, way);
+    expect(page.url(), "a move of the pad changed the page").toBe(url);
+    const name = await focusedName(page);
+    if (isAnswer(name)) found.add(name);
+    return name;
+  };
+  let here = await press(PAD.right);
+  for (const way of [PAD.down, PAD.up]) {
+    for (let step = 0; step < 30 && !isAnswer(here); step += 1) here = await press(way);
+  }
+  // About the card from there: each way from each answer found. The question stays put while the page scrolls, so
+  // standing on an answer again by script moves nothing.
+  const waiting = [...found];
   for (let from = waiting.shift(); from !== undefined; from = waiting.shift()) {
     for (const way of [PAD.up, PAD.down, PAD.left, PAD.right]) {
-      await page.evaluate(
-        (id) => document.querySelector<HTMLElement>(`[data-pad-seen="${id}"]`)?.focus(),
-        from,
-      );
-      await pressPad(page, way);
-      expect(page.url(), "a move of the pad changed the page").toBe(url);
-      const name = await focusedName(page);
-      if (isAnswer(name)) found.add(name);
-      const landed = await mark();
-      if (landed !== null && !reached.has(landed)) {
-        reached.add(landed);
-        waiting.push(landed);
-      }
+      await page.evaluate((name) => {
+        const all = [...document.querySelectorAll<HTMLElement>("a, button")];
+        all.find((one) => one.innerText.trim() === name)?.focus({ preventScroll: true });
+      }, from);
+      const before = found.size;
+      const landed = await press(way);
+      if (found.size > before && landed !== null) waiting.push(landed);
     }
   }
   return [...found].sort();
