@@ -289,6 +289,20 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
   await atLaunch(context);
 });
 
+test("the maker's own games and Live screen: no two buttons overlap, before launch and after", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(240_000);
+  // The Live screen holds the most buttons in the maker's area: the send, Test play under it, and the ways on and back.
+  await signInAs(page, live.maker.number, live.maker.password);
+  const paths = ["/make", `/make/${live.slug}`];
+  await expectNothingOverlaps(page, paths, "after launch");
+  await beforeLaunch(context);
+  await expectNothingOverlaps(page, paths, "before launch");
+  await atLaunch(context);
+});
+
 // The about page's corner button back to the feed is fixed in the window's corner while the page scrolls under it, so
 // a first screen is not enough: it slid over "Put your game on Ruken", "Watch the feed" and the links at the foot on
 // phones (seen 2026-11-28). It steps away while a button or link passes under it, so the page is walked from top to foot.
