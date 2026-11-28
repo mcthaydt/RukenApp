@@ -1,0 +1,124 @@
+import { test, type Page } from "@playwright/test";
+import { writeFileSync, mkdirSync } from "node:fs";
+import { gameWhere, startDraft, giveRealClips, agreeToTheAgreement } from "./support/game.ts";
+import { fillAnswers } from "./support/database.ts";
+import { asInstalled } from "./support/installed.ts";
+import { atLaunch, beforeLaunch } from "./support/launch.ts";
+import { layoutHasSettled } from "./support/look.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+const OUT = process.env.PROBE_OUT ?? "/tmp/probe";
+const SIZES = [[320, 568], [375, 667], [667, 375]] as const;
+function overlaps(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const name = (thing: Element) =>
+      (thing.getAttribute("aria-label") ?? thing.textContent.trim().replaceAll(/\s+/g, " ")) ||
+      (thing.getAttribute("class") ?? "");
+    /** The part of a thing that is drawn on screen. */
+    const drawn = (thing: Element) => {
+      const box = thing.getBoundingClientRect();
+      // Only the part that is drawn: inside the window (a clip scrolled away is not on screen) and inside every box
+      // around it that cuts off what runs past it (a view that scrolls inside itself ends above the bar).
+      let left = Math.max(box.left, 0);
+      let top = Math.max(box.top, 0);
+      let right = Math.min(box.right, innerWidth);
+      let bottom = Math.min(box.bottom, innerHeight);
+      for (let around = thing.parentElement; around !== null; around = around.parentElement) {
+        const style = getComputedStyle(around);
+        if (style.overflowX === "visible" && style.overflowY === "visible") continue;
+        const cut = around.getBoundingClientRect();
+        left = Math.max(left, cut.left);
+        top = Math.max(top, cut.top);
+        right = Math.min(right, cut.right);
+        bottom = Math.min(bottom, cut.bottom);
+      }
+      return { thing, left, top, right, bottom };
+    };
+    const controls = [
+      ...document.querySelectorAll("a, button, input, select, textarea, summary, [role='button']"),
+    ]
+      .filter((thing) => thing.closest("[aria-hidden='true'], [inert]") === null)
+      .filter((thing) => thing.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
+      .map(drawn)
+      .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
+    // Anything else drawn floating over the screen that is not a button (a tip such as "Swipe up for more", a
+    // "Got it." line, a problem's words): a positioned box painted with glass or a colour, holding no button. Over a
+    // button it hides it as surely as another button would. The friends' faces are a picture behind the buttons.
+    const overlays = [...document.querySelectorAll("body *")]
+      .filter((thing) => {
+        const style = getComputedStyle(thing);
+        if (!["absolute", "fixed", "sticky"].includes(style.position)) return false;
+        const painted =
+          style.backdropFilter !== "none" ||
+          (style.backgroundColor !== "rgba(0, 0, 0, 0)" && style.backgroundColor !== "transparent");
+        return (
+          painted &&
+          // The game page's video lies under its Back on purpose, and while it loads it is painted a colour (look.css,
+          // `[data-loading]`): it is Back's backdrop, not a tip over it.
+          !thing.matches(".gamepage .clipbox video") &&
+          thing.querySelector("a, button, input, select, textarea, summary, [role='button']") === null &&
+          thing.closest(
+            "a, button, input, select, textarea, summary, [role='button'], [aria-hidden='true'], .friends",
+          ) === null &&
+          thing.checkVisibility({ visibilityProperty: true, opacityProperty: true })
+        );
+      })
+      .map(drawn)
+      .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
+    // The friends' faces float behind the buttons, but a tip over them hides them as surely as it hides a button.
+    const faces = [...document.querySelectorAll(".friends")]
+      .filter((thing) => thing.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
+      .map(drawn)
+      .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
+    const found: string[] = [];
+    for (const overlay of overlays)
+      for (const control of [...controls, ...faces]) {
+        if (overlay.thing.contains(control.thing) || control.thing.contains(overlay.thing)) continue;
+        // The game's name on the game page sits over its video, the backdrop that opens it full size, on purpose.
+        if (control.thing.matches(".gamepage .clipopen")) continue;
+        const wide = Math.min(overlay.right, control.right) - Math.max(overlay.left, control.left);
+        const tall = Math.min(overlay.bottom, control.bottom) - Math.max(overlay.top, control.top);
+        if (wide > 1 && tall > 1) found.push(`${name(overlay.thing)} / ${name(control.thing)}`);
+      }
+    for (const [at, one] of controls.entries())
+      for (const other of controls.slice(at + 1)) {
+        if (one.thing.contains(other.thing) || other.thing.contains(one.thing)) continue;
+        // The plus to follow a maker is a badge on the bottom edge of their picture on a clip, the two drawn as one.
+        const credit = one.thing.closest(".credit");
+        if (credit !== null && credit === other.thing.closest(".credit")) continue;
+        const wide = Math.min(one.right, other.right) - Math.max(one.left, other.left);
+        const tall = Math.min(one.bottom, other.bottom) - Math.max(one.top, other.top);
+        if (wide > 1 && tall > 1) found.push(`${name(one.thing)} / ${name(other.thing)}`);
+      }
+    return found;
+  });
+}
+for (const state of (process.env.PROBE_STATES ?? "waiting,live").split(","))
+  for (const launch of ["before", "after"] as const)
+    test(`probe ${state} ${launch}`, async ({ page, context }) => {
+      test.setTimeout(120_000);
+      await forgetRateLimits();
+      mkdirSync(OUT, { recursive: true });
+      await asInstalled(page);
+      if (launch === "before") await beforeLaunch(context); else await atLaunch(context);
+      let slug: string; let path: string;
+      if (state === "check") { ({ slug } = await startDraft(page)); await fillAnswers(slug, { files: true, videos: true, age: "age_12" }); await giveRealClips(page, slug); await agreeToTheAgreement(page, slug); path = `/make/${slug}/check`; }
+      else { ({ slug } = await gameWhere(page, { state: state as "waiting" })); path = `/make/${slug}`; }
+      const rows: unknown[] = [];
+      for (const [width, height] of SIZES) {
+        await page.setViewportSize({ width, height });
+        await page.goto(path);
+        await layoutHasSettled(page);
+        const tiles = await page.evaluate(() =>
+          [...document.querySelectorAll<HTMLElement>(".tiles .tile")].map((t) => {
+            const b = t.getBoundingClientRect();
+            const f = t.closest("figure > div")!.getBoundingClientRect();
+            return { tag: t.tagName, shape: t.dataset.shape, w: +b.width.toFixed(2), h: +b.height.toFixed(2), frameW: +f.width.toFixed(2), frameH: +f.height.toFixed(2),
+              aspect: getComputedStyle(t).aspectRatio, still: t.hasAttribute("data-still"), stillVar: t.style.getPropertyValue("--still").slice(0, 60), ready: (t as HTMLVideoElement).readyState };
+          }));
+        const found = await overlaps(page);
+        const scroll = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+        await page.screenshot({ path: `${OUT}/${state}-${launch}-${width}x${height}.png` });
+        rows.push({ width, height, tiles, overlaps: found, sideScroll: scroll });
+      }
+      writeFileSync(`${OUT}/${state}-${launch}.json`, JSON.stringify(rows, null, 1));
+    });
