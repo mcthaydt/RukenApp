@@ -170,10 +170,13 @@ test("after the new games, the feed says You're all caught up, and keeps going",
 // line and the tips are both on the first clip, and neither may cover the other or any control (review 3 of #440: on an
 // upright phone the tips stood where the line does and hid it). The first page comes in the page itself, so the stand-in
 // here is at the same edge in the page: the page's own first page, told that the person is caught up at its first clip.
-test("caught up from the first clip, the line and the first open's tips stand apart", async ({ page }) => {
+test("caught up from the first clip, the line and the first open's tips stand apart", async ({
+  page,
+  context,
+}) => {
   test.setTimeout(120_000);
   let first: string | null = null;
-  await page.route(
+  await context.route(
     (address) => address.pathname === "/",
     async (route) => {
       if (route.request().resourceType() !== "document") {
@@ -196,30 +199,36 @@ test("caught up from the first clip, the line and the first open's tips stand ap
   const sizes = [page.viewportSize(), ...SMALL_SIZES];
   for (const size of sizes) {
     if (size === null) continue;
-    await page.setViewportSize(size);
-    // The tips show again at each size: the note that they were seen is forgotten.
-    await page.evaluate(() => {
+    // A first open at each size, in a window of its own: a reload of the same window may come back where it was left
+    // (seen in CI: the line out of view at 320×568), and a first open starts at the first clip.
+    const opened = await context.newPage();
+    await asInstalled(opened);
+    // The tips show again at each size: the note that they were seen is forgotten before the page reads it.
+    await opened.addInitScript(() => {
       try {
         localStorage.removeItem("rk_seen_hints");
       } catch {
-        // A blank page before the first screen has no storage, and nothing to forget.
+        // A browser that keeps no notes has nothing to forget.
       }
     });
-    await page.goto("/");
-    await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+    await opened.setViewportSize(size);
+    await opened.goto("/");
+    await expect(opened.locator("main.feed")).toHaveAttribute("data-ready", "true");
     expect(first, "the page's first page names its first clip").not.toBeNull();
-    const clip = clips(page).first();
+    const clip = clips(opened).first();
+    const where = `${String(size.width)}×${String(size.height)}`;
+    await expect(clip, `${where}: the feed opens on its first clip`).toHaveAttribute("data-current", "true");
     const line = clip.getByText(LINE);
     const tips = clip.locator(".hints");
-    const where = `${String(size.width)}×${String(size.height)}`;
     await expect(line, where).toBeInViewport({ ratio: 1 });
     await expect(tips, where).toBeInViewport({ ratio: 1 });
     const lineBox = await boxOf(line);
     const tipsBox = await boxOf(tips);
     expect(overlap(lineBox, tipsBox), `the tips cover the line at ${where}`).toBe(false);
-    for (const control of await controlBoxes(page)) {
+    for (const control of await controlBoxes(opened)) {
       expect(overlap(lineBox, control.box), `the line covers "${control.name}" at ${where}`).toBe(false);
       expect(overlap(tipsBox, control.box), `the tips cover "${control.name}" at ${where}`).toBe(false);
     }
+    await opened.close();
   }
 });
