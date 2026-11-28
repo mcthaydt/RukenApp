@@ -8,3 +8,4 @@ export { cleanHandle, isHandleShape } from "./handle.ts";
 export { LINK_TITLE_MAX } from "./links.ts";
 export { PHOTO_MAX_BYTES } from "./photo.ts";
 export { createFollows, type Follows } from "./follows.ts";
+export { pageEditorGate, pageEditorOpen, TEST_PAGES_COOKIE } from "./editor-switch.ts";

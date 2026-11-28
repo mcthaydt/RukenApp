@@ -7,6 +7,7 @@ import { asInstalled } from "./support/installed.ts";
 import { atLaunch, beforeLaunch } from "./support/launch.ts";
 import { wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { TEST_PAGES_COOKIE } from "../../src/features/pages/editor-switch.ts";
 
 // No two buttons or links ever sit on top of each other, on any screen, upright or sideways, before launch (Wishlist)
 // and after (Play). The owner, 2026-11-27, of a phone held sideways where the bar's buttons sat on the clip's like count
@@ -37,6 +38,10 @@ const SIGNED_OUT = [
   "/terms",
   "/cookies",
   "/help",
+  "/help/get-your-game-on-ruken",
+  "/help/how-the-feed-works",
+  "/help/github",
+  "/help/record-screen",
 ];
 const SIGNED_IN = [
   "/",
@@ -265,6 +270,23 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
   await beforeLaunch(context);
   await expectNothingOverlaps(page, paths, "before launch");
   await atLaunch(context);
+});
+
+// Making your page is closed on the real site until the Pages slice (src/features/pages/editor-switch.ts), and the
+// journeys' site keeps it open, so the screens that lose their way to it are checked again the way the real site shows
+// them.
+test("with making a page closed, as on the real site, no two buttons overlap on the screens that led to it", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(240_000);
+  await context.addCookies([{ name: TEST_PAGES_COOKIE, value: "closed", url: "http://localhost:4173" }]);
+  await signUp(page);
+  await expectNothingOverlaps(
+    page,
+    ["/make", "/about", "/help/get-your-game-on-ruken"],
+    "making a page closed",
+  );
 });
 
 // The about page's corner button back to the feed is fixed in the window's corner while the page scrolls under it, so

@@ -20,7 +20,7 @@
 
   <!-- The steps for four devices are a long page on a phone: a maker goes straight to their own. -->
   <nav aria-label="Pick your device">
-    <ul>
+    <ul class="sidelinks">
       <li><a class="go" href="#iphone">iPhone or iPad</a></li>
       <li><a class="go" href="#android">Android phone</a></li>
       <li><a class="go" href="#windows">Windows computer</a></li>

@@ -42,7 +42,7 @@
 
   <!-- A long page on a phone: a maker goes straight to the part they need. -->
   <nav aria-label="On this page">
-    <ul>
+    <ul class="sidelinks">
       <li><a class="go" href="#helper">Let an AI helper do it</a></li>
       <li><a class="go" href="#need">What you need</a></li>
       <li><a class="go" href="#steps">Step by step</a></li>
@@ -159,9 +159,11 @@
     Once it's live, players find it in the feed on Ruken's front page. It has its own link too, like
     ruken.io/g/your-game. Press See it on Ruken to get it.
   </p>
-  <p>
-    Make <a href="/make/page">your page</a> too. It shows all your games in one place, at ruken.io/your-name.
-  </p>
+  {#if data.pageEditor}
+    <p>
+      Make <a href="/make/page">your page</a> too. It shows all your games in one place, at ruken.io/your-name.
+    </p>
+  {/if}
 
   <h2>Change it later</h2>
   <p>

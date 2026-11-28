@@ -1,5 +1,6 @@
 import { feedServices } from "../../features/feed/feed.ts";
 import { dollars, PREMIUM_PRICES_CENTS } from "../../features/membership/membership.ts";
+import { pageEditorOpen } from "../../features/pages/pages.ts";
 import type { PageServerLoad } from "./$types";
 
 // The landing page: what Ruken is, for players and makers. Its words are in sections.ts; the server gives it what changes by
@@ -13,7 +14,7 @@ import type { PageServerLoad } from "./$types";
 const WALL_COLUMNS = 3;
 const WALL_ROWS = 2;
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, cookies }) => {
   const { clips } = await feedServices().service.page(null);
   const [top] = clips;
   return {
@@ -30,5 +31,7 @@ export const load: PageServerLoad = async ({ locals }) => {
           ),
     prices: { monthly: dollars(PREMIUM_PRICES_CENTS.monthly), annual: dollars(PREMIUM_PRICES_CENTS.annual) },
     signedIn: locals.caller.kind === "user",
+    // The section about a maker's own page waits for the Pages slice with the editor (sections.ts, "fans").
+    pageEditor: pageEditorOpen(cookies),
   };
 };
