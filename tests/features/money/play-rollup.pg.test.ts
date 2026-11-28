@@ -71,13 +71,16 @@ describe("rollUpPlayDays", () => {
     const free = await createUser(db());
     const staff = await createUser(db());
     const own = await createUser(db());
+    // A playtester's play before launch never counts for pay (playtesting spec, criterion 10).
+    const playtester = await createUser(db());
     const game = await addGame(db());
     const day = { startedAt: "2026-12-06T19:00:00Z", beats: 40, everySeconds: 15 };
     await addSession(db(), game, { ...day, userId: free, basis: "free_game" });
     await addSession(db(), game, { ...day, userId: staff, basis: "staff" });
     await addSession(db(), game, { ...day, userId: own, basis: "own_game" });
+    await addSession(db(), game, { ...day, userId: playtester, basis: "playtest" });
     expect(await roll("2026-12-07T12:00:00Z")).toEqual({ days: ["2026-12-06"] });
-    for (const user of [free, staff, own]) expect(await playDays(user)).toEqual([]);
+    for (const user of [free, staff, own, playtester]) expect(await playDays(user)).toEqual([]);
   });
 
   it("counts two tabs once and stops at three hours", async () => {

@@ -444,7 +444,7 @@ describe("sittingOf", () => {
     game: LiveGame,
     options: {
       minutes?: number;
-      basis?: "member" | "free_game" | "staff" | "own_game";
+      basis?: "member" | "free_game" | "staff" | "own_game" | "playtest";
       daysAgo?: number;
       attentive?: boolean;
     },
@@ -529,7 +529,7 @@ describe("sittingOf", () => {
       // The high bits: the low bits of this kind of generator repeat in short cycles.
       return Math.floor((seed / 2_147_483_648) * below);
     };
-    const bases = ["member", "member", "free_game", "free_game", "staff", "own_game"] as const;
+    const bases = ["member", "member", "free_game", "free_game", "staff", "own_game", "playtest"] as const;
     const game = await newGame();
     for (let i = 0; i < 70; i += 1) {
       await addPlay(game, {
@@ -572,7 +572,7 @@ describe("playersThisWeek", () => {
     game: LiveGame,
     options: {
       userId: string | null;
-      basis?: "member" | "free_game" | "staff" | "own_game";
+      basis?: "member" | "free_game" | "staff" | "own_game" | "playtest";
       daysAgo?: number;
       beat?: "attentive" | "looked_away" | "none";
     },
@@ -645,7 +645,7 @@ describe("memberBeatsByGame", () => {
   async function addPlay(
     game: LiveGame,
     options: {
-      basis?: "member" | "free_game" | "staff" | "own_game";
+      basis?: "member" | "free_game" | "staff" | "own_game" | "playtest";
       startedAt: Date;
       beats: { at: Date; attentive?: boolean }[];
     },
@@ -738,7 +738,7 @@ describe("playDays", () => {
     game: LiveGame,
     options: {
       userId?: string | null;
-      basis?: "member" | "free_game" | "staff" | "own_game";
+      basis?: "member" | "free_game" | "staff" | "own_game" | "playtest";
       startedAt: Date;
       beats: { at: Date; attentive?: boolean }[];
     },
