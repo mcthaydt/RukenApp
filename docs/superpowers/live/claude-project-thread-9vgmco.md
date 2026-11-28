@@ -1,4 +1,0 @@
-- Task: review 2 fixes for #451; CI fix for the feed read before its clips arrived.
-- Last commit: c7c6a07
-- Next step: push, watch CI, hand to review 3.
-- Open decisions: none. Updated 2026-11-28 09:39 UTC.
