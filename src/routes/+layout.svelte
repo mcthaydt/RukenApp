@@ -70,6 +70,9 @@
   // The feed, its Followed and Your turn tabs and Search fill the window with their own top bar, so they have no
   // wordmark above them.
   const FULL_SCREENS: readonly string[] = ["/", "/followed", "/your-turn", "/search"];
+  // The pages the cookie notice sends a person to read never show it over themselves: Cookies, and What we keep (the
+  // owner, 2026-11-28: the notice covers it and "makes it too hard to read"). Everywhere else the yes is asked as before.
+  const READ_IN_PEACE: readonly string[] = ["/cookies", "/privacy"];
 
   // A game's own page, its play screen and its maker's test play name the game in the tab; every other screen, a
   // missing page included, has the base title.
@@ -244,7 +247,7 @@
 {/if}
 
 <!-- A press that needs the yes opens the card again, even after "Not now", and says what for (consent/ask.svelte.ts). -->
-{#if !data.consented && (!notNow || consentAsk.reason !== null) && page.route.id !== "/cookies"}
+{#if !data.consented && (!notNow || consentAsk.reason !== null) && !READ_IN_PEACE.includes(page.route.id ?? "")}
   <Notice
     card
     aboveBar={barShown}

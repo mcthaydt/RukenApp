@@ -112,9 +112,10 @@
     --button: #ffffff;
     --button-text: #111314;
     box-sizing: border-box;
-    min-height: 100dvh;
+    /* The view (the body) ends above the bar of places (look.css), so the page fills it and no more. */
+    min-height: 100%;
     margin: 0;
-    padding: 2rem 1rem 6rem;
+    padding: 2rem 1rem 1rem;
     background: var(--ground);
     color: var(--text);
     display: flex;
@@ -216,10 +217,13 @@
     font-size: 1rem;
     overflow-wrap: anywhere;
   }
+  /* A link in words takes its tap height back from its margins (look.css), so the card's name would reach under its
+     Play; the name, Play and the page's links each stand on a line of their own and take their whole height. */
   .game h2 a {
     display: flex;
     align-items: center;
     min-height: 48px;
+    margin-block: 0;
     color: inherit;
   }
   .play,
@@ -227,6 +231,7 @@
   .links a {
     box-sizing: border-box;
     min-height: 48px;
+    margin-block: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -243,6 +248,15 @@
   .game :global(.wish .play) {
     flex-direction: row;
     gap: 0.5rem;
+  }
+  /* Two cards side by side on the smallest phone leave a card 120px: the button's own air is narrower there, so the
+     heart and "Wishlist" fit on one line. */
+  .game .play,
+  .game :global(.wish .play) {
+    padding-inline: 0.5rem;
+  }
+  .game :global(.wish .play) {
+    gap: 0.375rem;
   }
   /* A column that centres its items sizes a long unbroken title to its full length, so the title is held to the
      button's width instead and breaks inside it. */
