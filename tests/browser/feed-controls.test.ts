@@ -967,9 +967,7 @@ test.describe("the first open's hints", () => {
     const sound = page.getByText(touch ? "Tap the speaker for sound" : "Click the speaker for sound");
     await expect(swipe).toBeVisible();
     await expect(sound).toBeVisible();
-    await expect(
-      page.getByText(touch ? "Scroll down for more" : "Swipe up for more"),
-    ).toHaveCount(0);
+    await expect(page.getByText(touch ? "Scroll down for more" : "Swipe up for more")).toHaveCount(0);
     const play = await boxOf(
       page.locator("section[data-slug]").first().getByRole("link", { name: "Play", exact: true }),
     );

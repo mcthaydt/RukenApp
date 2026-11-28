@@ -110,6 +110,9 @@ function overlaps(page: Page): Promise<string[]> {
           (style.backgroundColor !== "rgba(0, 0, 0, 0)" && style.backgroundColor !== "transparent");
         return (
           painted &&
+          // A picture or a video is what the buttons sit on, not a tip floating over them: while it loads it is
+          // painted a colour (look.css, `[data-loading]`), and the game page's video lies under its Back on purpose.
+          !thing.matches("img, video") &&
           thing.querySelector("a, button, input, select, textarea, summary, [role='button']") === null &&
           thing.closest(
             "a, button, input, select, textarea, summary, [role='button'], [aria-hidden='true'], .friends",
@@ -199,8 +202,18 @@ async function expectNothingOverlaps(page: Page, paths: readonly string[], when:
           // A blank page before the first screen has no storage, and nothing to forget.
         }
       });
-      await page.goto(path);
+      // A game's page is checked while its video is still loading, its worst moment: the video's file is held back.
+      // Safari's engine stops answering the page while a video's file is held, so there the video loads as it would.
+      const holdVideo = path.startsWith("/g/") && page.context().browser()?.browserType().name() !== "webkit";
+      if (holdVideo) await page.route(/\.(?:webm|mp4|mov)(?:$|[?#])/, () => undefined);
+      // A held video never lets the page finish loading, so the check starts once its words are there.
+      await page.goto(path, holdVideo ? { waitUntil: "domcontentloaded" } : undefined);
       await pageHasSettled(page);
+      if (holdVideo)
+        await expect(
+          page.locator(".gamepage .clipbox video[data-loading]"),
+          `${path}'s video is still loading`,
+        ).toHaveCount(1);
       await wordsHaveSettled(page);
       const where = `${path} at ${size.name}, ${when}`;
       if (path === "/" || path === "/followed") {
@@ -212,6 +225,7 @@ async function expectNothingOverlaps(page: Page, paths: readonly string[], when:
       // Soft, so one run lists every screen and size that fails, not only the first.
       expect.soft(await overlaps(page), where).toEqual([]);
       expect.soft(await spilling(page), where).toEqual([]);
+      if (holdVideo) await page.unrouteAll({ behavior: "ignoreErrors" });
     }
   }
 }
