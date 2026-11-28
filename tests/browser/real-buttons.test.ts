@@ -269,7 +269,10 @@ test("the goodbye screen: Sign in in its sentence is a blue, heavier link with n
   await expect(signIn).toHaveCSS("text-decoration-line", "none");
 });
 
-test("Join on a game's page, for someone who is not a member, is a button", async ({ page, browser }) => {
+test("Join on a game's page, for someone who is not a member, is a button on a row of its own", async ({
+  page,
+  browser,
+}) => {
   const { slug } = await gameWhere(page, { state: "live" });
   const visitor = await browser.newContext({ baseURL: "http://localhost:4173" });
   try {
@@ -279,7 +282,14 @@ test("Join on a game's page, for someone who is not a member, is a button", asyn
     const join = player.getByRole("link", { name: "Join", exact: true });
     await expect(join).toBeVisible();
     await expect(join).toHaveCSS("text-decoration-line", "none");
-    expect((await join.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    // A filled button on a row of its own, under the price, as wide as Play: never a small outline at the end of a line.
+    await expect(join).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    const joinBox = await join.boundingBox();
+    const priceBox = await player.getByText(/^Members play every game\./).boundingBox();
+    const playBox = await player.getByRole("link", { name: "Play", exact: true }).boundingBox();
+    expect(joinBox?.height ?? 0).toBeGreaterThanOrEqual(48);
+    expect(joinBox?.y ?? 0).toBeGreaterThanOrEqual((priceBox?.y ?? 0) + (priceBox?.height ?? 0));
+    expect(Math.abs((joinBox?.width ?? 0) - (playBox?.width ?? 0))).toBeLessThanOrEqual(1);
     await expectRealButtons(player);
   } finally {
     await visitor.close();
@@ -317,7 +327,8 @@ test("the cookie notice: What we keep is blue words with an arrow, and nothing i
   const visitor = await browser.newContext({ storageState: NOT_CONSENTED, baseURL: "http://localhost:4173" });
   try {
     const page = await visitor.newPage();
-    await page.goto("/privacy");
+    // Not What we keep itself, where the notice stays away (the owner, 2026-11-28).
+    await page.goto("/help");
     const keep = page.locator(".consent").getByRole("link", { name: "What we keep" });
     await expect(keep).toBeVisible();
     await expect(keep).toHaveCSS("text-decoration-line", "none");

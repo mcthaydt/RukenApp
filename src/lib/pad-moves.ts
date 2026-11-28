@@ -29,7 +29,8 @@ function ahead(from: Box, to: Box, way: Way): number | null {
   if (gap >= -TOUCHING) return Math.max(gap, 0);
   // Overlapping boxes still count when the other one's middle is clearly that way: by more than half the smaller one's
   // size (a small button inside a big link's row). A button only a few pixels further on, in the next row, is not. Nor
-  // is a tall box beside the column (a game's video beside its buttons): it is to the side, not that way.
+  // is a box off to the side: a tall box beside a column (a game's clip beside Play, Join and Share) overlaps every row
+  // of it, and taking it would pull each move up or down out of the column (#453).
   if (sideways(from, to, way) > 0) return null;
   const along = way === "up" || way === "down";
   const middleFrom = along ? (from.top + from.bottom) / 2 : (from.left + from.right) / 2;

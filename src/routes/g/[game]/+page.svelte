@@ -135,9 +135,8 @@
         {#if data.playtest.action !== "play"}
           <div class="costrow">
             {#if data.cost === "join"}
-              <p class="costline">
-                Members play every game. {data.price} a month.&nbsp;<a class="joinlink" href={joinAt}>Join</a>
-              </p>
+              <p class="costline">Members play every game. {data.price} a month.</p>
+              <a class="button join" href={joinAt}>Join</a>
               <p class="costline">Tax is added where it applies.</p>
             {:else}
               <p class="costline">{COST_WORDS[data.cost]}</p>
