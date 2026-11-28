@@ -131,7 +131,6 @@ const signedIn = () => [
   "/",
   "/followed",
   "/your-turn",
-  "/your-turn/stopped",
   "/search",
   `/search?q=${encodeURIComponent(live.name)}`,
   NOTHING_FOUND,
