@@ -1,5 +1,5 @@
 /// A game one friend sent another: one row per sender, receiver and game, so sending again is the same row. The
-/// receiver removing it, or stopping the sender, deletes it; deleting either account deletes every row it is in
+/// receiver removing it deletes it; deleting either account deletes every row it is in
 /// (deletion.ts). Your turn (src/features/sends/) reads it.
 model GameSend {
   id     String    @id @default(cuid(2))
@@ -18,18 +18,4 @@ model GameSend {
   @@unique([fromId, toId, gameId])
   @@index([toId, sentAt])
   @@index([gameId])
-}
-
-/// A person who no longer takes games from another. The sender is never told: their sends answer as if they went.
-model SendStop {
-  id        String   @id @default(cuid(2))
-  stopperId String
-  stoppedId String
-  stoppedAt DateTime @db.Timestamptz
-
-  stopper User @relation("SendStopStopper", fields: [stopperId], references: [id], onDelete: Restrict)
-  stopped User @relation("SendStopStopped", fields: [stoppedId], references: [id], onDelete: Restrict)
-
-  @@unique([stopperId, stoppedId])
-  @@index([stoppedId])
 }
