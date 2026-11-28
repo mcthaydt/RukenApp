@@ -8,7 +8,8 @@ import {
 } from "./support/account.ts";
 import { NOT_CONSENTED } from "./support/consent.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
-import { padReachesEverything, plugInPad } from "./support/pad.ts";
+import { addGame } from "./support/game.ts";
+import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/pad.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The plus in the bar, signed out (the owner, 2026-11-28: "Clicking the plus does nothing when you're signed out, create
@@ -81,10 +82,62 @@ test.describe("before a yes to cookies", () => {
   });
 
   // Join and Sign in each need the yes, and each asks for it on its own screen; nothing stands between the pad and them.
+  // Played as a person would, from the first press with nothing focused, down the screen, back up and along: a card over the
+  // pitch would take the pad off it (review 1 of #462: Home, What we keep, I agree, never Join).
   test("a gamepad reaches every button on it, with no cookie question in the way", async ({ page }) => {
     await plugInPad(page);
     await pressThePlus(page);
+    await pageHasSettled(page);
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+    });
+    await page.mouse.move(0, 0);
+    const reached = new Set<string>();
+    const press = async (way: number) => {
+      await pressPad(page, way);
+      expect(page.url(), "a move of the pad changed the page").toMatch(/\/make$/);
+      const name = await page.evaluate(() => {
+        const one = document.activeElement;
+        if (!(one instanceof HTMLElement) || one === document.body) return null;
+        return (one.getAttribute("aria-label") ?? one.innerText).trim();
+      });
+      if (name !== null) reached.add(name);
+    };
+    await press(PAD.right);
+    for (const way of [PAD.down, PAD.up, PAD.right, PAD.left])
+      for (let step = 0; step < 6; step += 1) await press(way);
+    expect([...reached], "the pad never reaches them").toEqual(
+      expect.arrayContaining(["Join Ruken", "Sign in"]),
+    );
     await padReachesEverything(page);
+  });
+
+  // A press that asked for the yes on the feed (Like) is not asked again over the pitch: the card would cover it.
+  test("after Like on the feed asks for the yes, the plus still opens the pitch with no card over it", async ({
+    page,
+    browser,
+    request,
+  }) => {
+    test.setTimeout(120_000);
+    await addGame(browser, request);
+    await page.goto("/");
+    await pageHasSettled(page);
+    // Not now first: on a phone the feed's own card stands over Like until it is answered (its own work).
+    const tap = test.info().project.use.hasTouch === true;
+    const notNow = page.locator("aside.consent").getByRole("button", { name: "Not now", exact: true });
+    if (tap) await notNow.tap();
+    else await notNow.click();
+    await expect(page.locator("aside.consent")).toHaveCount(0);
+    const like = page.locator("section[data-current='true']").getByRole("button", { name: "Like", exact: true });
+    if (tap) await like.tap();
+    else await like.click();
+    await expect(page.locator("aside.consent")).toContainText("To like this game");
+    if (tap) await plus(page).tap();
+    else await plus(page).click();
+    await expect(page).toHaveURL("/make");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Made a game?");
+    await expect(page.locator("aside.consent")).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("link", { name: "Join Ruken", exact: true })).toBeVisible();
   });
 
   test("Join Ruken asks the cookie question on its own screen, then opens the form", async ({ page }) => {
