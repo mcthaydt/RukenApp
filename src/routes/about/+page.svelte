@@ -207,7 +207,7 @@
   <div class="pair closing">
     {#each CLOSING as closing (closing.heading)}
       <section class="card">
-        <!-- A still from Floor Fifty behind the card, blurred, dimmed and drifting slowly: it only decorates. -->
+        <!-- A photo of friends behind the card, dimmed and drifting slowly: it only decorates. -->
         <img class="glow" use:loads src={closing.glow} alt="" aria-hidden="true" loading="lazy" />
         <h2>{closing.heading}</h2>
         <p><a class="button outline" href={closing.button.href}>{closing.button.words}</a></p>
