@@ -42,7 +42,7 @@
 
   <!-- A long page on a phone: a maker goes straight to the part they need. -->
   <nav aria-label="On this page">
-    <ul>
+    <ul class="sidelinks">
       <li><a class="go" href="#helper">Let an AI helper do it</a></li>
       <li><a class="go" href="#need">What you need</a></li>
       <li><a class="go" href="#steps">Step by step</a></li>
