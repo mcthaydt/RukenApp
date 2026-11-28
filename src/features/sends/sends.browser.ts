@@ -2,6 +2,5 @@
 // layer test checks).
 export { default as SendPicker } from "./SendPicker.svelte";
 export { default as YourTurn } from "./YourTurn.svelte";
-export { default as Stopped } from "./Stopped.svelte";
 export type { Friend } from "./friend.ts";
 export { SEND_WORDS, whenWords } from "./words.ts";
