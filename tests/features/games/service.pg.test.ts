@@ -865,12 +865,13 @@ describe("testPlayOf", () => {
     expect(await service.testPlayOf("no-such-game", game.makerUserId)).toBeNull();
   });
 
-  it("answers a live game's waiting copy, never its live one, and nothing when no new copy waits", async () => {
+  it("answers a live game's waiting copy over its live one, and the live one when no new copy waits", async () => {
     const game = await newGame();
     await addBothClips(game.id);
     const live = await addPull(game.id);
     await makeLive(game.id, live);
-    expect(await service.testPlayOf(game.slug, game.makerUserId)).toBeNull();
+    expect((await service.testPlayOf(game.slug, game.makerUserId))?.pull.id).toBe(live);
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.testPlay).toBe(true);
 
     const waiting = await addPull(game.id);
     await db().game.update({

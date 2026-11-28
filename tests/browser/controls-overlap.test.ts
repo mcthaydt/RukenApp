@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { pageHasSettled, signUp } from "./support/account.ts";
+import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
 import { CONSENTED_STATE } from "./support/consent.ts";
 import {
   askedForParent,
@@ -285,6 +285,20 @@ test("a teen's Your feed and Ask a parent, and a parent's page, have no two butt
   const open = await askedForParent(teen.number);
   await expectNothingOverlaps(page, ["/settings/feed", open], "a teen's ask waiting");
   await expectNothingOverlaps(page, [await askedForParent(teen.number, "yes")], "after a parent's yes");
+});
+
+test("the maker's own games and Live screen: no two buttons overlap, before launch and after", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(240_000);
+  // The Live screen holds the most buttons in the maker's area: the send, Test play under it, and the ways on and back.
+  await signInAs(page, live.maker.number, live.maker.password);
+  const paths = ["/make", `/make/${live.slug}`];
+  await expectNothingOverlaps(page, paths, "after launch");
+  await beforeLaunch(context);
+  await expectNothingOverlaps(page, paths, "before launch");
+  await atLaunch(context);
 });
 
 // The about page's corner button back to the feed is fixed in the window's corner while the page scrolls under it, so

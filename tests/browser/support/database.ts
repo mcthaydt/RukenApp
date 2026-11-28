@@ -718,6 +718,20 @@ export async function unfollow(follower: { number: string }, maker: { number: st
   await db().makerFollow.deleteMany({ where: { followerId, makerId } });
 }
 
+/** A game sent to a person straight in the database, by the numbers the sender and the person signed up with. */
+export async function sendInDatabase(
+  from: { number: string },
+  to: { number: string },
+  slug: string,
+): Promise<void> {
+  const [fromId, toId, { id: gameId }] = [
+    await userIdOf(from.number),
+    await userIdOf(to.number),
+    await idsOf(slug),
+  ];
+  await db().gameSend.create({ data: { fromId, toId, gameId, sentAt: new Date() } });
+}
+
 /** The games sent to a person (by their number), newest first: each game's address and whether they have seen it. */
 export async function sentTo(number: string): Promise<{ game: string; seen: boolean }[]> {
   const toId = await userIdOf(number);
