@@ -1,0 +1,89 @@
+// Audit 2 probe (#465 at 12e47f4): for each screen and size, every control's left and right move under main's
+// src/lib/pad-moves.ts (saved beside it as old-pad-moves.tmp.ts from origin/main) and under the PR's, listing every
+// move that differs. Run: copy to tests/browser/, `git show origin/main:src/lib/pad-moves.ts > tests/browser/old-pad-moves.tmp.ts`,
+// and a config without the WebKit warm-up: playwright test -c <config> tests/browser/tmp-pad-diff.test.ts --project computer --project tablet
+import { test, type Page } from "@playwright/test";
+import { signUp, pageHasSettled } from "./support/account.ts";
+import { consented } from "./support/consent.ts";
+import { gameWhere } from "./support/game.ts";
+import { wordsHaveSettled } from "./support/look.ts";
+import { nextBox } from "../../src/lib/pad-moves.ts";
+import { nextBox as oldNextBox } from "./old-pad-moves.tmp.ts";
+import { givePage } from "./support/database.ts";
+
+test.use({ ...consented });
+const SIZES = [
+  { width: 320, height: 568 },
+  { width: 375, height: 667 },
+  { width: 667, height: 375 },
+  { width: 1280, height: 800 },
+];
+const CONTROLS =
+  "a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), " +
+  "textarea:not([disabled]), summary, iframe[data-pad-first], [tabindex]";
+
+async function diff(page: Page, label: string): Promise<string[]> {
+  const out: string[] = [];
+  const boxes = await page.evaluate((sel) => {
+    return [...document.querySelectorAll<HTMLElement>(sel)]
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        const name = (el.getAttribute("aria-label") ?? el.textContent ?? el.tagName).trim().replace(/\s+/g, " ").slice(0, 30);
+        return { name, left: r.left, top: r.top, right: r.right, bottom: r.bottom, w: r.width, h: r.height };
+      })
+      .filter((b) => b.w > 0 && b.h > 0 && b.bottom > 0 && b.top < innerHeight && b.right > 0 && b.left < innerWidth);
+  }, CONTROLS);
+  for (const [i, from] of boxes.entries()) {
+    const others = boxes.filter((_, j) => j !== i);
+    for (const way of ["left", "right"] as const) {
+      const a = oldNextBox(from, others, way);
+      const b = nextBox(from, others, way);
+      if (a !== b) out.push(`${label} ${way} from "${from.name}": was "${others[a]?.name ?? "-"}", now "${others[b]?.name ?? "-"}"`);
+    }
+  }
+  return out;
+}
+
+test("pad left/right: old vs new on many screens", async ({ page, browser }, info) => {
+  test.setTimeout(900_000);
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  const game = await gameWhere(await context.newPage(), { state: "live" });
+  await context.close();
+  const out: string[] = [];
+  const signedOut = ["/", "/followed", "/your-turn", "/search", "/sign-in", "/sign-up", "/forgot-password", "/about", "/help", "/cookies", "/privacy", "/terms", `/g/${game.slug}`, `/g/${game.slug}/play`];
+  const visit = async (paths: string[], tag: string) => {
+    for (const size of SIZES) {
+      await page.setViewportSize(size);
+      for (const path of paths) {
+        await page.goto(path);
+        await pageHasSettled(page).catch(() => {});
+        await wordsHaveSettled(page).catch(() => {});
+        out.push(...(await diff(page, `[${tag} ${size.width}x${size.height} ${path}]`)));
+      }
+    }
+  };
+  await visit(signedOut, "out");
+  const me = await signUp(page);
+  await givePage(me, { name: "Probe Maker", oneLine: "I make games." });
+  await visit(["/", "/me", "/me/name", "/me/password", "/me/delete", "/me/computers", "/me/saved", "/me/reposts", "/settings/feed", "/make", "/make/new", "/make/page", "/make/page/name", "/make/page/take-down", "/your-turn", "/search", `/g/${game.slug}`], "in");
+  console.log(`PROBE ${info.project.name} ${out.length} differences\n` + out.join("\n"));
+});
+
+/* Output at 12e47f4 (computer and tablet gave the same 14 lines; 31 screens x 4 sizes):
+PROBE computer 14 differences
+[out 375x667 /] right from "Play": was "Repost", now "Share"
+[out 667x375 /] right from "Save": was "Home", now "Add a game"
+[in 375x667 /] right from "Play": was "Share", now "More or less like this"
+[in 375x667 /me] left from "Change password": was "Add your games to Ruken", now "Your feed"
+[in 375x667 /me] right from "Your computers": was "Change password", now "Your name"
+[in 375x667 /me] left from "Delete my account": was "What is Ruken?", now "Sign out"
+[in 667x375 /me] right from "Your feed": was "Your name", now "You"
+[in 667x375 /me] left from "Your computers": was "Add your games to Ruken", now "Change password"
+[in 667x375 /me] left from "Delete my account": was "What is Ruken?", now "Sign out"
+[in 667x375 /make/new] right from "": was "Back", now "Next"
+[in 1280x800 /me] left from "Your feed": was "Your name", now "Add your games to Ruken"
+[in 1280x800 /me] right from "Your feed": was "What is Ruken?", now "Change password"
+[in 1280x800 /me] left from "Your name": was "Add your games to Ruken", now "Your computers"
+[in 1280x800 /me] left from "Delete my account": was "Your computers", now "Sign out"
+  ✓  1 [computer] › tests/browser/tmp-pad-diff.test.ts:43:1 › pad left/right: old vs new on many screens (35.4s)
+*/
