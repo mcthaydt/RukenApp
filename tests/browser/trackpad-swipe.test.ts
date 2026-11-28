@@ -21,7 +21,7 @@ test.beforeAll(async ({ browser, request }) => {
 });
 test.beforeEach(forgetRateLimits);
 
-const tab = (page: Page, name: "Fresh" | "Followed") =>
+const tab = (page: Page, name: "Fresh" | "Followed" | "Your turn") =>
   page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name });
 
 /** The sizes of a trackpad swipe's wheel moves, as a browser reports them: the push, then the long coast to a stop. */
@@ -133,6 +133,33 @@ async function trackpadSwipe(page: Page, way: "left" | "right"): Promise<void> {
   // The page's own events are stamped when the page makes them, so on the phone the whole swipe goes in one call.
   await page.evaluate(SWIPE_IN_PAGE, [SWIPE, sign, null] as [number[], number, string | null]);
 }
+
+/**
+ * Several gestures one after another with no rest between: each comes while the one before still coasts, as when a
+ * person swipes again before the trackpad has gone still. Each move is `[dx, dy]` as the wheel reports it.
+ */
+async function gesturesWithNoRest(page: Page, moves: [number, number][]): Promise<void> {
+  if (realWheel(page)) {
+    const pad = await padOf(page);
+    rest(pad);
+    for (const [dx, dy] of moves) await move(pad, dx, dy);
+    return;
+  }
+  await page.evaluate((all) => {
+    const { x, y } = (window as unknown as { pointer?: { x: number; y: number } }).pointer ?? {
+      x: innerWidth / 2,
+      y: innerHeight / 2,
+    };
+    for (const [deltaX, deltaY] of all) {
+      const target = document.elementFromPoint(x, y) ?? document.body;
+      target.dispatchEvent(new WheelEvent("wheel", { deltaX, deltaY, bubbles: true, cancelable: true }));
+    }
+  }, moves);
+}
+
+/** A swipe's wheel moves: the fingers going left (`"left"`, the page scrolling right) or right. */
+const swipeMoves = (way: "left" | "right"): [number, number][] =>
+  SWIPE.map((size) => [way === "left" ? size : -size, 0]);
 
 /**
  * Presses `button` and swipes the fingers to the left at once, with no wait between. With a real wheel the press and
@@ -359,4 +386,44 @@ test("a two-finger swipe over a panel, or one sliding away, stays on the page", 
   await onFresh();
   await expect(page).toHaveURL("/");
   expect(await page.evaluate(() => history.length)).toBe(pages);
+});
+
+// A trackpad goes on coasting for a second or two after the fingers lift, and a person often swipes again before it
+// stops: after scrolling to a clip, to go back the other way, or on to the next tab. Each of those is a swipe of its
+// own and moves one tab at once (the owner, 2026-11-28: "The horizontal swipe, at least on trackpad, is not
+// responsive"), though the wheel never rests between them.
+test("a swipe that comes while the last scroll or swipe still coasts moves at once", async ({ page }) => {
+  test.setTimeout(120_000);
+  await watchWheel(page);
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await pageHasSettled(page);
+  const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+  await pointAt(page, width / 2, height / 2);
+  const pages = await page.evaluate(() => history.length);
+  const on = (name: "Fresh" | "Followed" | "Your turn") =>
+    expect(tab(page, name)).toHaveAttribute("aria-current", "page");
+  await on("Fresh");
+
+  // A scroll down to the next clip, coasting, then the fingers to the left: Followed.
+  const scroll: [number, number][] = SWIPE.map((size) => [0, size]);
+  await gesturesWithNoRest(page, [...scroll, ...swipeMoves("left")]);
+  await on("Followed");
+  await expect(page).toHaveURL("/followed");
+
+  // To the right and straight back to the left: Fresh, then Followed again.
+  await gesturesWithNoRest(page, [...swipeMoves("right"), ...swipeMoves("left")]);
+  await on("Followed");
+  await expect(page).toHaveURL("/followed");
+
+  // Back to Fresh, then two swipes to the left, the second while the first coasts: Followed, then Your turn.
+  await gesturesWithNoRest(page, swipeMoves("right"));
+  await on("Fresh");
+  await gesturesWithNoRest(page, [...swipeMoves("left"), ...swipeMoves("left")]);
+  await on("Your turn");
+  await expect(page).toHaveURL("/your-turn");
+
+  // None of it reached the browser as its own Back or Forward, and the page never left the feed's tabs.
+  await expect.poll(() => wheels(page)).toMatchObject({ sideways: 6 * SWIPE.length, passed: 0 });
+  expect(await page.evaluate(() => history.length)).toBeGreaterThan(pages);
 });
