@@ -258,6 +258,7 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 
 ### Flaky tests
 
+- `tests/browser/make-walk.test.ts:59`, #463's draft run 46135701897 at `6d8ab94` (browser shard 5 of 6, job 140950579941): failed once; the #463 reviewer re-ran it 81 of 81 green locally. #463 does not touch the maker's walk. Cause not investigated.
 - `tests/browser/real-buttons.test.ts:201` "a waiting game's screen: the way back and the foot are real buttons" [phone], main CI after #447 at `7d058b7` (run 46130716068, gate job 140942790425): passed only on try 2. Cause not investigated; #447 does not touch that screen.
 - `tests/browser/cookie-consent.test.ts:260` "a computer's key writes with no cookie, and a made-up key writes nothing" [tablet], a local run of five touched files (Playwright 1.63 docker image) on `claude/project-thread-9jsisq` at `5307c25`, 2026-11-28 ~10:10 UTC: line 276 expected 3 rate-limit rows and read 0. It passed 90 of 90 when the file was re-run three times over. Likely cause, not proved: another worker's `beforeEach(forgetRateLimits)` clears the shared rate-limit table between the two reads. #463 does not touch this file or rate limits.
 - `tests/browser/controls-overlap.test.ts` friend-faces overlap test on `/followed` [phone], #446 lane 2 review's local WebKit run (Playwright 1.63 docker server) at `bb9015d`, 2026-11-28: failed once with a WebKit "internal error" on `/followed`, passed when re-run alone. #446 changes only the about page, its art and the about overlap test. Cause not looked at yet.
