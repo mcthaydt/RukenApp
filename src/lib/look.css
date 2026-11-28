@@ -750,6 +750,16 @@ textarea[aria-invalid="true"] {
   min-width: 0;
 }
 
+/* Two answers side by side (a parent's Yes and No), each its own form: the buttons share the row evenly. */
+.row > form > button {
+  width: 100%;
+}
+
+/* A Back arrow beside a screen's one button keeps its own size; the button takes the rest of the row. */
+.row > .back {
+  flex: none;
+}
+
 /* A button, or a link that looks like one. Flex, because an inline link ignores a height and a transform:
    without it a link-button would be neither 48px tall nor give when pressed. The main forward action is Blue
    with white words, on felt and on a card alike. */
@@ -6082,5 +6092,34 @@ dialog.rises.closing::backdrop {
   dialog.rises[open],
   dialog.rises[open]::backdrop {
     animation: none;
+  }
+}
+
+/* Ask a parent on a short window (a small phone, or a laptop's 720): the card's padding closes up a little, so the
+   name, the number and the button all fit above the bar with no scrolling. Every target keeps its 48px. */
+@media (max-height: 820px) {
+  main.card.ask {
+    padding-block: 0.75rem;
+  }
+}
+
+/* Shorter still (a small phone, or a window held sideways), and with a problem showing: each label sits beside its
+   field instead of over it, so the three fields take three rows and Text my parent stays in view. */
+@media (max-height: 700px) {
+  main.card.ask form > p:not(.row) {
+    margin-block: 0.5rem;
+  }
+
+  main.card.ask label {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    align-items: center;
+    column-gap: 0.75rem;
+    line-height: 1.2;
+  }
+
+  main.card.ask label :is(input, select) {
+    min-width: 0;
+    margin: 0;
   }
 }

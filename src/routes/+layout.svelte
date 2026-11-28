@@ -36,8 +36,9 @@
   // Which of the bar's places the person is on: the feed, Your games or You, like an app's tabs (the owner, 2026-11-22).
   const place = $derived.by(() => {
     if (page.status >= 400) return null;
-    // Followed is the feed's other tab, so it is Home too.
-    if (page.route.id === "/" || page.route.id === "/followed") return "home";
+    // Followed and Your turn are the feed's other tabs, and Search opens from the feed's top bar, so all are Home too.
+    // With nothing marked on Search, the always-blue Add a game read as the place the person was on (the owner, 2026-11-28).
+    if (["/", "/followed", "/your-turn", "/search"].includes(page.route.id ?? "")) return "home";
     if (page.route.id === "/make") return "make";
     if (page.route.id === "/me") return "you";
     return null;

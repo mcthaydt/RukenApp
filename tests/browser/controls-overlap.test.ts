@@ -2,10 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
 import { CONSENTED_STATE, NOT_CONSENTED, consented } from "./support/consent.ts";
 import {
+  askedForParent,
   fillAnswers,
   followById,
   givePage,
   likeById,
+  makeThemUnder18,
   personWithPage,
   putGameWhereStaffLeaveIt,
   userIdOf,
@@ -327,6 +329,18 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
   await beforeLaunch(context);
   await expectNothingOverlaps(page, paths, "before launch");
   await atLaunch(context);
+});
+
+test("a teen's Your feed and Ask a parent, and a parent's page, have no two buttons overlapping", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const teen = await signUp(page);
+  await makeThemUnder18(teen.number);
+  await expectNothingOverlaps(page, ["/settings/feed", "/settings/feed/parent"], "a teen with nothing asked");
+  const open = await askedForParent(teen.number);
+  await expectNothingOverlaps(page, ["/settings/feed", open], "a teen's ask waiting");
+  await expectNothingOverlaps(page, [await askedForParent(teen.number, "yes")], "after a parent's yes");
 });
 
 test("the maker's own games and Live screen: no two buttons overlap, before launch and after", async ({
