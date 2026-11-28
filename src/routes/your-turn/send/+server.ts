@@ -2,8 +2,7 @@ import { sendsServices, SEND_WORDS } from "../../../features/sends/sends.ts";
 import type { RequestHandler } from "./$types";
 
 // Sending a game to a friend, from the share sheet's faces (games-sent-to-you brief, "The site believes nothing the form
-// sends"). Only the sheet's script posts here, as a form with the game's address and the friend's page address. A
-// receiver who stopped the sender answers the same as a send that went, so the sender is never told.
+// sends"). Only the sheet's script posts here, as a form with the game's address and the friend's page address.
 
 const said = (problem: string, status: number) => Response.json({ problem }, { status });
 

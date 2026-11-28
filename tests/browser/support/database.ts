@@ -713,11 +713,6 @@ export async function sentTo(number: string): Promise<{ game: string; seen: bool
   return rows.map((row) => ({ game: row.game.slug, seen: row.seenAt !== null }));
 }
 
-/** How many people this person (by their number) has stopped sending them games. */
-export async function stopsOf(number: string): Promise<number> {
-  return db().sendStop.count({ where: { stopperId: await userIdOf(number) } });
-}
-
 /**
  * A person made straight in the database (they never sign in), with a page of their own under this name, so a journey
  * can have many friends without signing each one up. Answers their id and their page's address.

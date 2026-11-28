@@ -124,7 +124,7 @@ test("a member reads that Play is included, and has no Join", async ({ page }) =
   await expect(page.getByRole("link", { name: "Join" })).toHaveCount(0);
 });
 
-test("Join is beside the price for someone who is not a member, and only for them", async ({ page }) => {
+test("Join is under the price for someone who is not a member, and only for them", async ({ page }) => {
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("link", { name: "Join" })).toHaveAttribute(
     "href",

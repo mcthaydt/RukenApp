@@ -1650,10 +1650,10 @@ button.go {
    screen that has the bar keeps its buttons under its words instead of pinned under the bar: only the step-by-step
    screens, which have no bar, pin theirs. */
 /* The screen's view ends above the bar (the app view, at the end of this file): the bar's 3.75rem, its gap to the
-   window's foot, and half a rem of air. The feed and a maker's page are pictures from edge to edge, so they run on under
-   the glass and keep their own room at the end instead. A game's page ends above the bar too, so the bar never covers
-   its Join or its Wishlist on the first screen. */
-:root:has(nav.bar):not(:has(main:is(.feed, .empty, .makerpage))) {
+   window's foot, and half a rem of air. The feed is pictures from edge to edge, so it runs on under the glass and keeps
+   its own room at the end instead. A game's page and a maker's page end above the bar too, so the bar never covers
+   their Join, Play or Wishlist on the first screen. */
+:root:has(nav.bar):not(:has(main:is(.feed, .empty))) {
   --foot: calc(3.75rem + max(0.75rem, env(safe-area-inset-bottom, 0px)) + 0.5rem);
 }
 
@@ -1693,7 +1693,7 @@ button.go {
   }
 
   /* Sideways the bar and a step's buttons stand along the right edge, so the view keeps the whole height. */
-  :root:has(nav.bar):not(:has(main:is(.feed, .empty, .makerpage))),
+  :root:has(nav.bar):not(:has(main:is(.feed, .empty))),
   :root:not(:has(nav.bar)):has(.screen .acts) {
     --foot: 0px;
   }
@@ -4145,12 +4145,13 @@ main.gamepage {
   font: var(--text-small);
 }
 
-/* Pressing the clip opens it full size: a button over the whole clip, with nothing of its own to see. */
+/* Pressing the clip opens it full size: a button over the clip, with nothing of its own to see. It starts below the row
+   of Back, so the two never sit on top of each other (the owner, 2026-11-27: no two controls overlap, on any screen). */
 .gamepage .clipopen {
   position: absolute;
-  inset: 0;
+  inset: calc(0.5rem + var(--size-target) + 0.25rem) 0 0;
   width: 100%;
-  height: 100%;
+  height: auto;
   min-height: 0;
   padding: 0;
   border-radius: 0;
@@ -4178,8 +4179,8 @@ main.gamepage {
   text-decoration: none;
 }
 
-/* Play and what it costs, said before the press: the one blue tile, with Join as the last word of the cost for someone who
-   is not a member. */
+/* Play and what it costs, said before the press: the one blue tile, with Join as a button of its own under the cost for
+   someone who is not a member. */
 .gamepage .playtile {
   display: flex;
   flex-direction: column;
@@ -4211,19 +4212,16 @@ main.gamepage {
   gap: 0.25rem;
 }
 
-/* Join, after the cost: a small button with a chalk edge, never an underlined word, so the white Play stays the main one. */
-.gamepage .costrow .joinlink {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  margin: 0.25rem 0 0;
-  padding: 0.25rem 1rem;
-  border: 2px solid var(--chalk);
-  border-radius: var(--radius-button);
+/* Join, under the cost: a real button on a row of its own, as wide as Play (the owner, 2026-11-28, of a small outlined
+   Join tucked into the end of the price line: "This is bad UI ux"). It is green glass, so the white Play stays the
+   first thing to press and Join is plainly the next. */
+.gamepage .costrow .join {
+  align-self: stretch;
+  margin-block: 0.5rem;
+  background: var(--glass-safe);
+  box-shadow: var(--glass-edge);
   color: var(--chalk);
-  font: var(--text-button);
-  font-size: 1rem;
-  text-decoration: none;
+  text-shadow: var(--glass-ink);
 }
 
 .gamepage .playtile > .outline,
