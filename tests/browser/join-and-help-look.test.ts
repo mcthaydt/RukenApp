@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { payAsNewMember, signUp } from "./support/account.ts";
+import { pageHasSettled, payAsNewMember, signUp } from "./support/account.ts";
 import { failTheirCard } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { boxOf, showTheOwner } from "./support/look.ts";
@@ -100,6 +100,11 @@ test.describe("the paywall card", () => {
 
   test("the plans can be chosen with the keyboard alone, and the row shows the focus", async ({ page }) => {
     await page.goto("/join");
+    // The arrow keys' ring comes from the page's own key listener (WebKit takes :focus-visible off the radio an arrow
+    // moves to), which exists only once the page has come alive. A key pressed before then is never heard, so the ring
+    // stays off: the phone flake at this line (CI on #391 and #457), made every time on phone by holding the page back
+    // until after the keys. This journey is about the page's keys, so it presses them once the page is alive.
+    await pageHasSettled(page);
     const monthly = page.getByRole("radio", { name: "$9.99 a month", exact: true });
     // Reached by the keyboard, not only by script, so every browser counts the focus as the keyboard's (WebKit draws no
     // ring for a focus a script gave).
