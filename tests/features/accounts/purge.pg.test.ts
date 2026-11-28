@@ -616,6 +616,12 @@ describe("purgeDueAccounts", () => {
         { gameId: others.id, token: "b".repeat(22), madeAt: at },
       ],
     });
+    await db().playtestOldLink.createMany({
+      data: [
+        { token: "c".repeat(22), gameId: theirs.id, replacedAt: at },
+        { token: "d".repeat(22), gameId: others.id, replacedAt: at },
+      ],
+    });
     const clock = await askToBeDeleted(leaving.id);
 
     clock.advance(13 * DAY_MS);
@@ -632,6 +638,12 @@ describe("purgeDueAccounts", () => {
     ).toEqual([{ gameId: others.id, userId: player.id }]);
     expect(
       await db().playtestLink.findMany({
+        where: { gameId: { in: [others.id, theirs.id] } },
+        select: { gameId: true },
+      }),
+    ).toEqual([{ gameId: others.id }]);
+    expect(
+      await db().playtestOldLink.findMany({
         where: { gameId: { in: [others.id, theirs.id] } },
         select: { gameId: true },
       }),

@@ -14,9 +14,9 @@ const ADDING = [
   /^CREATE TYPE "Playtest(State|Via)" AS ENUM \(/,
   /^ALTER TYPE "PlayBasis" ADD VALUE 'playtest'$/,
   /^ALTER TABLE "Game" ADD COLUMN "playtestAsking" BOOLEAN NOT NULL DEFAULT false$/,
-  /^CREATE TABLE "(Playtester|PlaytestLink)" \(/,
-  /^CREATE (UNIQUE )?INDEX "(Playtester|PlaytestLink)_\w+" ON "(Playtester|PlaytestLink)"\(/,
-  /^ALTER TABLE "(Playtester|PlaytestLink)" ADD CONSTRAINT "(Playtester|PlaytestLink)_\w+" /,
+  /^CREATE TABLE "(Playtester|PlaytestLink|PlaytestOldLink)" \(/,
+  /^CREATE (UNIQUE )?INDEX "(Playtester|PlaytestLink|PlaytestOldLink)_\w+" ON "(Playtester|PlaytestLink|PlaytestOldLink)"\(/,
+  /^ALTER TABLE "(Playtester|PlaytestLink|PlaytestOldLink)" ADD CONSTRAINT "(Playtester|PlaytestLink|PlaytestOldLink)_\w+" /,
 ];
 
 describe("the playtesting migration", () => {

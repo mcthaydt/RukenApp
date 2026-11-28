@@ -36,6 +36,15 @@ CREATE TABLE "PlaytestLink" (
     CONSTRAINT "PlaytestLink_pkey" PRIMARY KEY ("gameId")
 );
 
+-- CreateTable
+CREATE TABLE "PlaytestOldLink" (
+    "token" TEXT NOT NULL,
+    "gameId" TEXT NOT NULL,
+    "replacedAt" TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT "PlaytestOldLink_pkey" PRIMARY KEY ("token")
+);
+
 -- CreateIndex
 CREATE INDEX "Playtester_userId_idx" ON "Playtester"("userId");
 
@@ -45,6 +54,9 @@ CREATE UNIQUE INDEX "Playtester_gameId_userId_key" ON "Playtester"("gameId", "us
 -- CreateIndex
 CREATE UNIQUE INDEX "PlaytestLink_token_key" ON "PlaytestLink"("token");
 
+-- CreateIndex
+CREATE INDEX "PlaytestOldLink_gameId_idx" ON "PlaytestOldLink"("gameId");
+
 -- AddForeignKey
 ALTER TABLE "Playtester" ADD CONSTRAINT "Playtester_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "Game"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -53,6 +65,9 @@ ALTER TABLE "Playtester" ADD CONSTRAINT "Playtester_userId_fkey" FOREIGN KEY ("u
 
 -- AddForeignKey
 ALTER TABLE "PlaytestLink" ADD CONSTRAINT "PlaytestLink_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "Game"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PlaytestOldLink" ADD CONSTRAINT "PlaytestOldLink_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "Game"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- Prisma cannot say these; covered by tests/features/playtest/playtest.pg.test.ts. An ask always has its time, and a
 -- link's token is 22 characters of base64url (128 random bits).

@@ -348,16 +348,26 @@ export function createPlaytest(deps: PlaytestDeps) {
       return link.token;
     },
 
-    /** Makes a new link; the old one then matches nothing. */
+    /** Makes a new link; the old one is kept as an old link, which leads to the game's page and changes nothing. */
     async newLink(makerId: string, slug: string, launchNowMs: number): Promise<string | null> {
       if (!before(launchNowMs)) return null;
       const game = await makersGame(makerId, slug);
       if (game === null) return null;
       const token = newLinkToken();
-      await db.playtestLink.upsert({
-        where: { gameId: game.id },
-        create: { gameId: game.id, token, madeAt: now() },
-        update: { token, madeAt: now() },
+      await db.$transaction(async (tx) => {
+        const old = await tx.playtestLink.findUnique({ where: { gameId: game.id }, select: { token: true } });
+        if (old !== null) {
+          // Two presses at once both read the same old token; the second keeps it once.
+          await tx.playtestOldLink.createMany({
+            data: [{ token: old.token, gameId: game.id, replacedAt: now() }],
+            skipDuplicates: true,
+          });
+        }
+        await tx.playtestLink.upsert({
+          where: { gameId: game.id },
+          create: { gameId: game.id, token, madeAt: now() },
+          update: { token, madeAt: now() },
+        });
       });
       return token;
     },
@@ -365,7 +375,8 @@ export function createPlaytest(deps: PlaytestDeps) {
     /**
      * Someone opens an invite link: with no row they become a playtester; an ask waiting counts as a yes. A no, a
      * removal or the maker's own open change nothing, so the link never undoes the maker's answer. It makes no Your
-     * turn row: the person is already on the game's page. The game's address, or null for a token that matches nothing.
+     * turn row: the person is already on the game's page. A replaced link only leads to the game's page. The game's
+     * address, or null for a token that matches nothing.
      */
     async openLink(
       userId: string,
@@ -388,7 +399,14 @@ export function createPlaytest(deps: PlaytestDeps) {
           },
         },
       });
-      if (link === null) return null;
+      if (link === null) {
+        // A link the maker replaced still leads to the game's page, so nobody sent it is lost; it changes nothing.
+        const old = await db.playtestOldLink.findUnique({
+          where: { token },
+          select: { game: { select: { slug: true } } },
+        });
+        return old?.game.slug ?? null;
+      }
       const game = link.game;
       const live = game.state === "live" && game.livePullId !== null;
       if (!live || !before(launchNowMs) || game.makerUserId === userId) return game.slug;

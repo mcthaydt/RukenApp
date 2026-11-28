@@ -269,7 +269,7 @@ test("with asking off nobody new can ask, but waiting asks stay; a no is never s
   }
 });
 
-test("the maker invites a friend from the sheet and shares the link; a new link ends the old one", async ({
+test("the maker invites a friend from the sheet and shares the link; after a new link the old one only opens the game", async ({
   browser,
 }) => {
   test.setTimeout(240_000);
@@ -319,7 +319,7 @@ test("the maker invites a friend from the sheet and shares the link; a new link 
     await pageHasSettled(late.page);
     await expect(tagPlayIn(late.page)).toBeVisible();
 
-    // A new link: the old one now leads nowhere and makes nobody a playtester.
+    // A new link: the old one now only opens the game's page and makes nobody a playtester.
     await kai.page.getByRole("button", { name: W.newLink }).click();
     await expect(sheet.locator(".link")).not.toHaveText(first);
     await open(stranger.page, "/sign-in");
@@ -328,8 +328,8 @@ test("the maker invites a friend from the sheet and shares the link; a new link 
     await stranger.page.getByRole("button", { name: "Sign in" }).click();
     await expect(stranger.page).toHaveURL("/");
     await stranger.page.goto(path);
-    await expect(stranger.page).toHaveURL("/");
-    await open(stranger.page, `/g/${kai.slug}`);
+    await expect(stranger.page).toHaveURL(`/g/${kai.slug}`);
+    await pageHasSettled(stranger.page);
     await expect(tagPlayIn(stranger.page)).toHaveCount(0);
 
     // Both are under Playing, "Invited" the day.

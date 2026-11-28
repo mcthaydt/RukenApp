@@ -16,6 +16,6 @@ export const GET: RequestHandler = async ({ params, locals, cookies, url }) => {
     launchServices().now(cookies),
     () => isKnownAdultCaller(caller),
   );
-  // A link that was replaced by a new one matches no game, so it leads only to the feed.
+  // Only a token that was never a link matches no game; a replaced link still names its game.
   redirect(303, slug === null ? "/" : `/g/${slug}`);
 };

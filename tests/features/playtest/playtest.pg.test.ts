@@ -403,16 +403,30 @@ describe("in order", () => {
     expect(await playtest.hasNew(p.id, yes, BEFORE)).toBe(true);
   });
 
-  it("the link stays the same until a new one is made, after which the old one does nothing", async () => {
+  it("the link stays the same until a new one is made, after which the old one leads to the game and does nothing", async () => {
     const { g, p } = await seed("none", true);
     const first = await playtest.linkFor(g.maker.id, g.slug, BEFORE);
     expect(await playtest.linkFor(g.maker.id, g.slug, BEFORE)).toBe(first);
     const second = await playtest.newLink(g.maker.id, g.slug, BEFORE);
     expect(second).not.toBe(first);
-    expect(await playtest.openLink(p.id, first ?? "", BEFORE, yes)).toBeNull();
+    expect(await playtest.openLink(p.id, first ?? "", BEFORE, yes)).toBe(g.slug);
     expect(await rowOf(g.id, p.id)).toBeNull();
+    // Every replaced link is kept, not only the last one.
+    const third = await playtest.newLink(g.maker.id, g.slug, BEFORE);
+    expect(await playtest.openLink(p.id, first ?? "", BEFORE, yes)).toBe(g.slug);
     expect(await playtest.openLink(p.id, second ?? "", BEFORE, yes)).toBe(g.slug);
+    expect(await rowOf(g.id, p.id)).toBeNull();
+    expect(await playtest.openLink(p.id, third ?? "", BEFORE, yes)).toBe(g.slug);
     expect((await rowOf(g.id, p.id))?.state).toBe("in");
+    expect(await playtest.openLink(p.id, "z".repeat(22), BEFORE, yes)).toBeNull();
+  });
+
+  it("an old link leaves a waiting ask waiting", async () => {
+    const { g, p } = await seed("asked", true);
+    const first = await playtest.linkFor(g.maker.id, g.slug, BEFORE);
+    await playtest.newLink(g.maker.id, g.slug, BEFORE);
+    expect(await playtest.openLink(p.id, first ?? "", BEFORE, yes)).toBe(g.slug);
+    expect((await rowOf(g.id, p.id))?.state).toBe("asked");
   });
 
   it("the Playtesters page lists asks and players, with Since or Invited, and ticks friends already playing", async () => {

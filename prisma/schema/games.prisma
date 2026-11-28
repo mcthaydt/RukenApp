@@ -139,8 +139,9 @@ model Game {
   reports  GameReport[]
 
   // The playtest feature's tables point at a game; they are declared in playtest.prisma.
-  playtesters  Playtester[]
-  playtestLink PlaytestLink?
+  playtesters      Playtester[]
+  playtestLink     PlaytestLink?
+  playtestOldLinks PlaytestOldLink[]
 
   // The feed feature's tables point at a game; they are declared in feed.prisma.
   feedTastes     FeedTaste[]

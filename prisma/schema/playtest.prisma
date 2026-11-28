@@ -47,12 +47,24 @@ model Playtester {
   @@index([userId])
 }
 
-/// A game's invite link. One per game; a new link replaces the row, and the old token then matches nothing. The token
-/// itself is kept so the maker's sheet shows the same link each time it opens. CHECK: PlaytestLink_token_check.
+/// A game's invite link. One per game; a new link replaces the row and moves the old token to PlaytestOldLink. The
+/// token itself is kept so the maker's sheet shows the same link each time it opens. CHECK: PlaytestLink_token_check.
 model PlaytestLink {
   gameId String   @id
   token  String   @unique
   madeAt DateTime @db.Timestamptz
 
   game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+}
+
+/// A link the maker replaced with "Make a new link". It still leads to the game's page, so nobody sent it is lost, but
+/// it changes nothing. Deleted with the maker's games' links (deletion.ts).
+model PlaytestOldLink {
+  token      String   @id
+  gameId     String
+  replacedAt DateTime @db.Timestamptz
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+
+  @@index([gameId])
 }
