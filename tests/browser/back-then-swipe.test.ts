@@ -29,18 +29,25 @@ test.beforeAll(async ({ browser, request }, testInfo) => {
 });
 test.beforeEach(forgetRateLimits);
 
-/** A finger dragged up or down the screen in eight moves, as a real touch the browser scrolls with. */
+/**
+ * A finger dragged up or down the screen in eight moves, as a real touch the browser scrolls with. It goes past half the
+ * screen, so it moves the feed on by its length and not only by its speed, and each move carries its own time, 16 ms
+ * after the one before, so a slow machine sends the same swipe as a quick one.
+ */
 async function drag(page: Page, cdp: CDPSession, way: "down" | "up"): Promise<void> {
   const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
   const x = Math.round(width * 0.4);
-  let y = Math.round(height * (way === "down" ? 0.3 : 0.75));
-  const step = Math.round((height * 0.45) / 8) * (way === "down" ? 1 : -1);
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  let y = Math.round(height * (way === "down" ? 0.15 : 0.85));
+  const step = Math.round((height * 0.65) / 8) * (way === "down" ? 1 : -1);
+  let timestamp = Date.now() / 1000;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }], timestamp });
   for (let move = 0; move < 8; move++) {
     y += step;
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] });
+    timestamp += 0.016;
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }], timestamp });
   }
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  timestamp += 0.016;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [], timestamp });
 }
 
 const slideRunning = (page: Page) =>
