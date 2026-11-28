@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { CONSENTED_STATE, consented } from "./support/consent.ts";
+import { CONSENTED_STATE } from "./support/consent.ts";
 import { followById, givePage, likeById, personWithPage, userIdOf } from "./support/database.ts";
-import { gameWhere } from "./support/game.ts";
+import { addGame } from "./support/game.ts";
 import { asInstalled } from "./support/installed.ts";
 import { atLaunch, beforeLaunch } from "./support/launch.ts";
 import { wordsHaveSettled } from "./support/look.ts";
@@ -13,9 +13,10 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // and its Share: "these are overlapping, why didn't reviewer catch this?" Nothing checked it, so this does, at the
 // small phone, a common phone and the small phone held sideways (opened from the Home Screen, where it works sideways).
 // A press anywhere on a clip opens its game: that whole-clip link is under everything on purpose, and is left out, as is
-// any button drawn wholly on a bigger one that is its backdrop, and what scrolls under the floating bar on a page that
-// scrolls (a person scrolls it clear; fits-the-screen.test.ts holds the screens that must not scroll). The
-// friends' faces on a clip are a picture, not a control, and float behind the buttons (the owner, 2026-11-27), so they
+// the game page's video, which opens it full size, under its Back, and the plus to follow a maker, a badge on their
+// picture. Nothing else is: a button wholly on top of another
+// counts, and so does a page that scrolls, on its first screen, since that is what a person sees. The feed is checked on
+// a clip whose maker has a page with a long name, the tallest column of buttons there is. The friends' faces on a clip are a picture, not a control, and float behind the buttons (the owner, 2026-11-27), so they
 // are not counted either. Nothing here is made to be kept: the journeys that make, change and delete things are their
 // own.
 
@@ -48,17 +49,14 @@ const SIGNED_IN = [
   "/settings/feed",
 ];
 
-let live: { slug: string; name: string };
+let live: Awaited<ReturnType<typeof addGame>>;
 
-test.beforeAll(async ({ browser }) => {
-  test.setTimeout(180_000);
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(240_000);
   await forgetRateLimits();
-  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
-  try {
-    live = await gameWhere(await context.newPage(), { state: "live" });
-  } finally {
-    await context.close();
-  }
+  // A live game whose maker has a page, so its clip carries the maker's picture, name and plus at the top of the column.
+  live = await addGame(browser, request);
+  await givePage(live.maker, { name: "Night Owl Games Studio", oneLine: "I make small, hard games." });
 });
 test.beforeEach(async ({ page }) => {
   // The sizes are set here, so one engine is enough besides Safari's: the iPhone and the iPad's Chrome.
@@ -73,25 +71,6 @@ function overlaps(page: Page): Promise<string[]> {
     const name = (thing: Element) =>
       (thing.getAttribute("aria-label") ?? thing.textContent.trim().replaceAll(/\s+/g, " ")) ||
       (thing.getAttribute("class") ?? "");
-    /** Whether it stays put on the window (the bar, the top bar): it or a box around it is fixed. */
-    const floats = (thing: Element): boolean => {
-      for (let at: Element | null = thing; at !== null; at = at.parentElement)
-        if (getComputedStyle(at).position === "fixed") return true;
-      return false;
-    };
-    /**
-     * Whether it moves under what floats as the screen scrolls, so a person scrolls it clear: it is inside a box that
-     * scrolls freely. The feed snaps a whole clip to the window, so a clip's buttons never move clear: they count.
-     */
-    const scrolls = (thing: Element): boolean => {
-      for (let at = thing.parentElement; at !== null; at = at.parentElement) {
-        const style = getComputedStyle(at);
-        const free =
-          style.overflowY === "auto" || style.overflowY === "scroll" || at === document.scrollingElement;
-        if (free && at.scrollHeight > at.clientHeight + 1) return style.scrollSnapType === "none";
-      }
-      return false;
-    };
     const controls = [
       ...document.querySelectorAll("a, button, input, select, textarea, summary, [role='button']"),
     ]
@@ -114,23 +93,19 @@ function overlaps(page: Page): Promise<string[]> {
           right = Math.min(right, cut.right);
           bottom = Math.min(bottom, cut.bottom);
         }
-        return { thing, left, top, right, bottom, floats: floats(thing), scrolls: scrolls(thing) };
+        return { thing, left, top, right, bottom };
       })
       .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
     const found: string[] = [];
     for (const [at, one] of controls.entries())
       for (const other of controls.slice(at + 1)) {
         if (one.thing.contains(other.thing) || other.thing.contains(one.thing)) continue;
-        // A button drawn wholly on a bigger one that is its backdrop (Back on the game page's video, which opens the
-        // video full size) hides nothing of either.
-        const inside = (small: typeof one, big: typeof one) =>
-          small.left >= big.left &&
-          small.right <= big.right &&
-          small.top >= big.top &&
-          small.bottom <= big.bottom;
-        if (inside(one, other) || inside(other, one)) continue;
-        // A page that scrolls under the floating bar: the person scrolls what is under it clear.
-        if ((one.floats && other.scrolls) || (other.floats && one.scrolls)) continue;
+        // Back sits on the game page's video, which opens the video full size: a backdrop, on purpose.
+        const backdrop = (thing: Element) => thing.matches(".gamepage .clipopen");
+        if (backdrop(one.thing) || backdrop(other.thing)) continue;
+        // The plus to follow a maker is a badge on the bottom edge of their picture on a clip, the two drawn as one.
+        const credit = one.thing.closest(".credit");
+        if (credit !== null && credit === other.thing.closest(".credit")) continue;
         const wide = Math.min(one.right, other.right) - Math.max(one.left, other.left);
         const tall = Math.min(one.bottom, other.bottom) - Math.max(one.top, other.top);
         if (wide > 1 && tall > 1) found.push(`${name(one.thing)} / ${name(other.thing)}`);
@@ -139,13 +114,39 @@ function overlaps(page: Page): Promise<string[]> {
   });
 }
 
-/** Each button whose words run past its own edges. */
+/** Each button whose words run past its own edges, or break a word across two lines inside it. */
 function spilling(page: Page): Promise<string[]> {
-  return page.evaluate(() =>
-    [...document.querySelectorAll("button, a.button")]
-      .filter((thing) => thing.closest("[aria-hidden='true'], [inert]") === null && thing.checkVisibility())
-      .filter((thing) => thing.scrollWidth > thing.clientWidth + 1)
-      .map((thing) => thing.textContent.trim()),
+  return page.evaluate(() => {
+    const buttons = [...document.querySelectorAll("button, a.button")].filter(
+      (thing) => thing.closest("[aria-hidden='true'], [inert]") === null && thing.checkVisibility(),
+    );
+    const found: string[] = [];
+    for (const button of buttons) {
+      if (button.scrollWidth > button.clientWidth + 1)
+        found.push(`${button.textContent.trim()} runs past its edges`);
+      const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node !== null; node = walker.nextNode())
+        for (const word of (node.textContent ?? "").matchAll(/\S+/g)) {
+          const range = document.createRange();
+          range.setStart(node, word.index);
+          range.setEnd(node, word.index + word[0].length);
+          const lines = new Set([...range.getClientRects()].map((piece) => Math.round(piece.top)));
+          if (lines.size > 1) found.push(`"${word[0]}" breaks across two lines`);
+        }
+    }
+    return found;
+  });
+}
+
+/** The feed brought to the game's clip, whose maker has a page; Followed shows it only to someone following them. */
+async function onTheMakersClip(page: Page, path: string): Promise<void> {
+  const clip = page.locator(`section[data-slug="${live.slug}"]`).first();
+  if (path === "/followed" && (await clip.count()) === 0) return;
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip.locator(".credit")).toBeVisible();
+  await page.waitForFunction(
+    (slug) => document.querySelector(`section[data-slug="${slug}"]`)?.getAttribute("data-current") === "true",
+    live.slug,
   );
 }
 
@@ -155,6 +156,7 @@ async function expectNothingOverlaps(page: Page, paths: readonly string[], when:
     for (const path of paths) {
       await page.goto(path);
       await pageHasSettled(page);
+      if (path === "/" || path === "/followed") await onTheMakersClip(page, path);
       await wordsHaveSettled(page);
       const where = `${path} at ${size.name}, ${when}`;
       // Soft, so one run lists every screen and size that fails, not only the first.
@@ -192,6 +194,8 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
   await followById(meId, friend.id);
   await followById(friend.id, meId);
   await likeById(friend.id, live.slug, true);
+  // Following the maker, so Followed shows the clip too.
+  await followById(meId, live.makerUserId);
   const paths = [...SIGNED_IN, `/g/${live.slug}`, `/${handle}`];
   await expectNothingOverlaps(page, paths, "after launch");
   await beforeLaunch(context);

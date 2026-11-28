@@ -1248,6 +1248,26 @@
     backdrop-filter: var(--glass-filter);
     box-shadow: var(--glass-edge);
   }
+  /* A short phone held upright (an iPhone SE, 568px): the maker, their name and five round buttons stand taller than
+     the room between the top bar and the bar, so the maker's picture went under Search and the tabs. Here the column
+     closes up and the maker's name is left for a screen reader, the picture still opening their page. */
+  @media (orientation: portrait) and (max-height: 600px) {
+    .side {
+      gap: 0.5rem;
+    }
+    /* Room for the plus, whose target hangs half its height below the picture, above Like. */
+    .credit {
+      padding-bottom: calc(var(--size-target) / 2);
+    }
+    .makername {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
   /* A phone held sideways: the window is short, so the words take one corner and the clip the rest. The bar stands
      along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, the round
      buttons in a column left of the bar, and the first open's hints at the top, where the band cannot cover them. */
