@@ -541,6 +541,16 @@ describe("the page sign-up makes from a name", () => {
     expect(await service.pageOf(userId)).toBeNull();
   });
 
+  it("after a page is taken down, makes the new one at another address, so the old one is free", async () => {
+    const [maker, other] = await Promise.all([1, 2].map(() => createUser(db())));
+    const { handle } = await service.makeUnlistedPage(maker ?? "", "Taken Down");
+    expect(handle).toBe("taken-down");
+    await service.removePage(maker ?? "");
+    const again = await service.makeUnlistedPage(maker ?? "", "Taken Down", handle);
+    expect(again.handle).toMatch(/^taken-down-\d{4}$/);
+    expect((await service.makeUnlistedPage(other ?? "", "Taken Down")).handle).toBe(handle);
+  });
+
   it("gives two accounts with one name two addresses, one after the other and at the same moment", async () => {
     const [a, b, c, d] = await Promise.all([1, 2, 3, 4].map(() => createUser(db())));
     const first = await service.makeUnlistedPage(a ?? "", "Twin Name");

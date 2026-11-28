@@ -146,13 +146,19 @@ export function createPagesService(deps: PagesServiceDeps) {
    * it. An account that already has a page keeps it, so a second Save (a double tap, a second tab) makes nothing new.
    * A taken address is found from the database's own refusal, so two people saving the same name at once both get one.
    */
-  async function makeUnlistedPage(userId: string, rawName: string): Promise<{ handle: string }> {
+  async function makeUnlistedPage(
+    userId: string,
+    rawName: string,
+    // An address just taken down, which must be left free for anyone to take.
+    avoid: string | null = null,
+  ): Promise<{ handle: string }> {
     const name = checkedName(rawName);
     const own = await db.makerPage.findUnique({ where: { userId }, select: { handle: true } });
     if (own !== null) return own;
     const tries = addressesFor(name, digits);
     const held = await db.makerPage.findMany({ where: { handle: { in: tries } }, select: { handle: true } });
     const taken = new Set(held.map((page) => page.handle));
+    if (avoid !== null) taken.add(avoid);
     for (const handle of tries.filter((one) => !taken.has(one))) {
       try {
         await db.makerPage.create({ data: { userId, handle, name, listed: false } });

@@ -21,7 +21,7 @@ export const actions: Actions = {
       // A second press, or a second tab, finds it already gone: that is what was asked for.
       if (!(problem instanceof PageError && problem.code === "NOT_FOUND")) throw problem;
     }
-    await pagesServices().service.makeUnlistedPage(userId, page.name);
+    await pagesServices().service.makeUnlistedPage(userId, page.name, page.handle);
     // A person with no page is asked the first question, which says so and lets her make a new one.
     savedThenRooms(event.cookies, "Your page is down.");
   },
