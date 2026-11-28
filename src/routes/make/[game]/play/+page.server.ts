@@ -4,8 +4,9 @@ import { gamesServices } from "../../../../features/games/games.ts";
 import { GAME_FRAME_ALLOW, GAME_FRAME_SANDBOX, playServices } from "../../../../features/play/play.ts";
 import type { PageServerLoad } from "./$types";
 
-// A maker's test play: their own game's files before staff say yes (a draft, a game waiting for review, or a live game's
-// new copy). Only the game's own maker gets in. Anyone else, and a game with nothing new to try, gets the missing page,
+// A maker's test play: their own game's files, before staff say yes (a draft, a game waiting for review, or a live game's
+// new copy) or the live copy (before launch the game's own page shows Wishlist where Play goes, its maker's too). Only
+// the game's own maker gets in. Anyone else, and a game with nothing to try, gets the missing page,
 // the same as a game that is not there, so a stranger learns nothing. It is under the maker's area, never a game's own
 // address, so nothing here reaches players, the feed or search.
 export const load: PageServerLoad = async ({ locals, url, params }) => {
