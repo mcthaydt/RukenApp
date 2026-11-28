@@ -6,10 +6,11 @@
   the background and the page reads itself again.
 -->
 <script lang="ts">
+  import { browser } from "$app/env";
   import { enhance } from "$app/forms";
   import { goto } from "$app/navigation";
   import { page as here } from "$app/state";
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import Icon from "../../lib/icon.svelte";
   import { loads } from "../../lib/loads.ts";
   import { slideAway, slideAwayOnCancel } from "../../lib/sheet.ts";
@@ -30,6 +31,9 @@
   let { data, form }: Props = $props();
   // Until the script runs, the invite sheet is drawn open in the page itself (a dialog with no script cannot be modal).
   let enhanced = $state(false);
+  // Set once, as the page is first drawn, and never again: Svelte sets a dialog's `open` as a property, and setting it
+  // after the script has made the sheet modal hides it with no close.
+  const drawnOpen = untrack(() => (!browser && data.invite !== null ? { open: true } : {}));
   onMount(() => {
     enhanced = true;
   });
@@ -70,8 +74,7 @@
   $effect(() => {
     if (!enhanced || data.invite === null || sheet === undefined || sheet.matches(":modal")) return;
     copied = "";
-    // Opened by a whole page load, the sheet was drawn open without script; that `open` goes once the script runs, so
-    // it is made modal after that.
+    // Opened by a whole page load, the sheet was drawn open for a browser without script; it is made modal here.
     const opening = sheet;
     void tick().then(() => {
       if (opening.matches(":modal")) return;
@@ -218,7 +221,7 @@
   class="sharesheet rises invitesheet"
   tabindex="-1"
   bind:this={sheet}
-  open={!enhanced && data.invite !== null ? true : undefined}
+  {...drawnOpen}
   aria-labelledby="invite-title"
   onclick={(event) => {
     if (event.target === sheet) slideAway(sheet);

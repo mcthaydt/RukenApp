@@ -336,6 +336,22 @@ test("the maker invites a friend from the sheet and shares the link; a new link 
     await open(kai.page, `/make/${kai.slug}/playtesters`);
     await expect(playingOf(kai.page)).toContainText(mia.name);
     await expect(playingOf(kai.page).getByText(/^Invited [A-Z][a-z]{2} \d{1,2}$/)).toHaveCount(2);
+
+    // With no script, the sheet is drawn open in the page, with its link.
+    const plain = await browser.newContext({
+      baseURL: SITE,
+      javaScriptEnabled: false,
+      storageState: await kai.context.storageState(),
+    });
+    try {
+      const page = await plain.newPage();
+      await page.goto(`/make/${kai.slug}/playtesters?invite`);
+      const drawn = page.getByRole("dialog", { name: W.sheetTitle });
+      await expect(drawn).toBeVisible();
+      await expect(drawn.locator(".link")).toHaveText(/\/p\/[A-Za-z0-9_-]{22}$/);
+    } finally {
+      await plain.close();
+    }
   } finally {
     await Promise.all([
       kai.context.close(),
