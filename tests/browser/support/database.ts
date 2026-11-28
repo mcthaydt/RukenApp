@@ -694,3 +694,52 @@ export async function sentTo(number: string): Promise<{ game: string; seen: bool
 export async function stopsOf(number: string): Promise<number> {
   return db().sendStop.count({ where: { stopperId: await userIdOf(number) } });
 }
+
+/**
+ * A person made straight in the database (they never sign in), with a page of their own under this name, so a journey
+ * can have many friends without signing each one up. Answers their id and their page's address.
+ */
+export async function personWithPage(
+  name: string,
+  photoKey?: string,
+): Promise<{ id: string; handle: string }> {
+  const tag = crypto.randomUUID().replaceAll("-", "").slice(0, 12);
+  const { id } = await db().user.create({ data: { name, email: `friend-${tag}@example.test` } });
+  const handle = `f${tag}`;
+  await db().makerPage.create({
+    data: {
+      userId: id,
+      handle,
+      name,
+      oneLine: "I play games.",
+      ...(photoKey === undefined ? {} : { photoKey }),
+    },
+  });
+  return { id, handle };
+}
+
+/** One person (by id) follows another, without the other following back. */
+export async function followById(followerId: string, makerId: string): Promise<void> {
+  await db().makerFollow.createMany({
+    data: [{ followerId, makerId, followedAt: new Date() }],
+    skipDuplicates: true,
+  });
+}
+
+/** A person (by id) likes a game (by its address), or takes the like back, as pressing Like does. */
+export async function likeById(userId: string, slug: string, on: boolean): Promise<void> {
+  const { id: gameId } = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true } });
+  if (on) {
+    await db().gameMark.createMany({
+      data: [{ userId, gameId, kind: "like", madeAt: new Date() }],
+      skipDuplicates: true,
+    });
+  } else {
+    await db().gameMark.deleteMany({ where: { userId, gameId, kind: "like" } });
+  }
+}
+
+/** One person (by id) stops following another. */
+export async function unfollowById(followerId: string, makerId: string): Promise<void> {
+  await db().makerFollow.deleteMany({ where: { followerId, makerId } });
+}

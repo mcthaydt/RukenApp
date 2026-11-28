@@ -1632,9 +1632,10 @@ form > * + button:not(.quiet) {
    screen that has the bar keeps its buttons under its words instead of pinned under the bar: only the step-by-step
    screens, which have no bar, pin theirs. */
 /* The screen's view ends above the bar (the app view, at the end of this file): the bar's 3.75rem, its gap to the
-   window's foot, and half a rem of air. The feed, a game's page and a maker's page are pictures from edge to edge, so
-   they run on under the glass and keep their own room at the end instead. */
-:root:has(nav.bar):not(:has(main:is(.feed, .empty, .gamepage, .makerpage))) {
+   window's foot, and half a rem of air. The feed and a maker's page are pictures from edge to edge, so they run on under
+   the glass and keep their own room at the end instead. A game's page ends above the bar too, so the bar never covers
+   its Join or its Wishlist on the first screen. */
+:root:has(nav.bar):not(:has(main:is(.feed, .empty, .makerpage))) {
   --foot: calc(3.75rem + max(0.75rem, env(safe-area-inset-bottom, 0px)) + 0.5rem);
 }
 
@@ -1674,7 +1675,7 @@ form > * + button:not(.quiet) {
   }
 
   /* Sideways the bar and a step's buttons stand along the right edge, so the view keeps the whole height. */
-  :root:has(nav.bar):not(:has(main:is(.feed, .empty, .gamepage, .makerpage))),
+  :root:has(nav.bar):not(:has(main:is(.feed, .empty, .makerpage))),
   :root:not(:has(nav.bar)):has(.screen .acts) {
     --foot: 0px;
   }
@@ -4013,11 +4014,11 @@ main.helpdesk {
 
 /* A game's page (spec 3, the Bento page): one grid of tiles. One column on a phone held upright, two from 520px wide, and
    four from 1000px: the clip with the name over it takes the left half and its tiles stand beside it, so Play is in view
-   on a sideways phone too. The foot keeps room for the bar slice 3 adds, so nothing moves when it comes. */
+   on a sideways phone too. Its view ends above the bar, so it needs no room of its own at the foot. */
 main.gamepage {
   width: min(100% - 1.5rem, 80rem);
   margin: 0 auto;
-  padding: 0.75rem 0 7rem;
+  padding: 0.75rem 0;
 }
 
 .gamepage .bento {

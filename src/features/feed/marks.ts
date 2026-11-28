@@ -20,6 +20,15 @@ export interface ClipMarks {
   reposted: boolean;
 }
 
+/** How many friends' faces a clip shows before the rest are a +N. */
+export const FRIEND_FACES = 3;
+
+/** The friends who liked a game, as a clip shows them: up to FRIEND_FACES faces, newest like first, and how many more. */
+export interface FriendLikes {
+  faces: { name: string; photoKey: string | null }[];
+  more: number;
+}
+
 export interface MarksDeps {
   db: PrismaClient;
   clock: Clock;
@@ -88,6 +97,36 @@ export function createMarks(deps: MarksDeps) {
           },
         ]),
       );
+    },
+
+    /**
+     * For each of these games that a friend of the viewer liked, the friends to show (null when signed out: nobody).
+     * A friend is someone the viewer follows who follows them back (the owner, 2026-11-27: "friends just means you follow
+     * each other"), and has a page, which is where their name and face come from. One read, whatever the number of
+     * games; a game no friend liked is left out of the map.
+     */
+    async friendsWhoLiked(
+      viewerId: string | null,
+      gameIds: readonly string[],
+    ): Promise<Map<string, FriendLikes>> {
+      if (viewerId === null || gameIds.length === 0) return new Map();
+      const rows = await db.$queryRaw<{ gameId: string; name: string; photoKey: string | null }[]>`
+        SELECT mark."gameId", page."name", page."photoKey"
+        FROM "GameMark" mark
+        JOIN "MakerFollow" mine ON mine."followerId" = ${viewerId} AND mine."makerId" = mark."userId"
+        JOIN "MakerFollow" theirs ON theirs."followerId" = mark."userId" AND theirs."makerId" = ${viewerId}
+        JOIN "MakerPage" page ON page."userId" = mark."userId"
+        WHERE mark."kind" = 'like' AND mark."gameId" = ANY(${[...gameIds]})
+        ORDER BY mark."gameId", mark."madeAt" DESC, mark."userId"
+      `;
+      const shown = new Map<string, FriendLikes>();
+      for (const row of rows) {
+        const game = shown.get(row.gameId) ?? { faces: [], more: 0 };
+        if (game.faces.length < FRIEND_FACES) game.faces.push({ name: row.name, photoKey: row.photoKey });
+        else game.more += 1;
+        shown.set(row.gameId, game);
+      }
+      return shown;
     },
 
     /** Takes a person's mark off a game, by its address, whether or not the game is still live. */

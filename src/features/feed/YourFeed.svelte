@@ -261,7 +261,10 @@
     width: 100%;
     text-align: left;
   }
+  /* One word that never breaks, so the words beside it wrap instead (the narrowest phone). */
   .state {
+    flex: none;
+    white-space: nowrap;
     padding: 0.25rem 0.75rem;
     border-radius: var(--radius-small);
     background: var(--felt-raised);
