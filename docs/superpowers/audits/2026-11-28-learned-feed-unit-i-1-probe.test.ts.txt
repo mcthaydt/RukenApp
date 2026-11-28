@@ -1,0 +1,23 @@
+
+// AUDIT PROBE (not committed): the states the PR's overlap test leaves out.
+test("PROBE parent page No, off and ended, and Ask a parent with its problem line, overlap nothing", async ({ page }) => {
+  test.setTimeout(240_000);
+  const teen = await signUp(page);
+  await makeThemUnder18(teen.number);
+  await expectNothingOverlaps(page, [await askedForParent(teen.number, "no")], "after a parent's No");
+  for (const size of SIZES) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await page.goto("/settings/feed/parent");
+    await pageHasSettled(page);
+    await page.getByLabel("Phone number").fill("12");
+    await page.getByRole("button", { name: "Text my parent" }).click();
+    await expect(page.getByRole("alert")).toBeVisible();
+    await wordsHaveSettled(page);
+    expect.soft(await overlaps(page), `Ask a parent with a problem at ${size.name}`).toEqual([]);
+    const fit = await page.evaluate(() => ({
+      page: document.documentElement.scrollHeight - innerHeight,
+      view: document.body.scrollHeight - document.body.clientHeight,
+    }));
+    console.log(`PROBE fit ${size.name}: ${JSON.stringify(fit)}`);
+  }
+});
