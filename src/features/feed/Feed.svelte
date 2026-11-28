@@ -15,7 +15,6 @@
   import { goto } from "$app/navigation";
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick, untrack } from "svelte";
-  import { browser } from "$app/environment";
   import { snapshot } from "$app/navigation";
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
@@ -138,7 +137,7 @@
   // on a game's button every clip of that game (a game can be on the feed twice), on this page, on pages still to come
   // and on the other tabs' pages asked for ahead. A press shows over a page asked for before it was made (`since`).
   // On the server nothing has been pressed yet, and kept.svelte.ts is the browser's alone.
-  let since = $state(browser ? arrival(location.pathname).since : 0);
+  let since = $state(typeof window !== "undefined" ? arrival(location.pathname).since : 0);
 
   // The marks being sent, as "slug kind", so a second press waits for the first to come back.
   let sendingMarks = $state<string[]>([]);

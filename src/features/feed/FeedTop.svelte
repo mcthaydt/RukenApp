@@ -30,7 +30,6 @@
   import { beforeNavigate, goto, preloadData } from "$app/navigation";
   import { onMount } from "svelte";
   import { arrival, askedAhead, kept, newsShown, quietRefresh, settingOff } from "./kept.svelte.ts";
-  import { browser } from "$app/environment";
   import Icon from "../../lib/icon.svelte";
   import {
     LB,
@@ -58,7 +57,7 @@
   } = $props();
 
   // The Your turn dot, unless the list was seen since this tab's page was asked for (kept.svelte.ts).
-  const dot = $derived(browser ? newsShown(news, location.pathname) : news);
+  const dot = $derived(typeof window !== "undefined" ? newsShown(news, location.pathname) : news);
 
   /** Goes to the tab `step` places along, if there is one, unless a sheet is open over the feed. */
   function stepTab(step: 1 | -1): void {
