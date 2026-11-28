@@ -11,3 +11,7 @@
 - Why tests missed it: the phone project is WebKit (iPhone SE); no Chromium phone-size profile; Back journeys count only page slides; none swipes vertically after Back (the swipe helper sends synthetic touch events, which never scroll).
 - Leads not yet ruled out: Chrome's toolbar / implicit root scroller after the game page scrolls in body; a new deploy turning the Back into a full page load (SvelteKit version change) since many deploys landed today; Chrome Android's own back animation reporting hasUAVisualTransition false.
 - Probe script: /mnt/project-files/handoff/double-slide-back/probe.test.ts.txt (run with probe.config.ts, which drops the WebKit warm-up; needs TEST_DATABASE_URL).
+
+## New evidence (2026-11-28 06:34 UTC)
+- Slice 3 walk (main 43d9a3c, R3 in docs/superpowers/audits/2026-11-28-slice-3-e2e-walk.md on claude/project-thread-jqesp1, PR #449): Galaxy S9+ Chromium, CDP touch drag of 8 moves over 45% of the screen. Tap clip, page.goBack(), wait 900 ms, swipe down: 8 of 16 rounds did not move at all, and the next swipe moved one clip. With no Back first: 6 of 6 moved. My probe waited 2000 ms after Back, which is why it never saw it.
+- Lead: a swipe made soon after Back is lost, likely while the Back slide or its clip hand-off still holds the page. On a real phone a lost swipe that snaps back, followed by one that moves, can look like a double. The failing check to write first: tap a clip, Back, wait ~900 ms, swipe down, expect exactly one clip back; 8 rounds.
