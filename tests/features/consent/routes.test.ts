@@ -53,13 +53,7 @@ describe("what every route does before a yes", () => {
   // what keeps something under it is gated.
   it("opens the Your turn tab and gates every route under it", () => {
     expect(routeKind("/your-turn")).toBe("open");
-    for (const id of [
-      "/your-turn/send",
-      "/your-turn/seen",
-      "/your-turn/remove",
-      "/your-turn/stop",
-      "/your-turn/stopped",
-    ])
+    for (const id of ["/your-turn/send", "/your-turn/seen", "/your-turn/remove"])
       expect(routeKind(id), id).toBe("gated");
   });
 

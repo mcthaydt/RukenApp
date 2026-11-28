@@ -533,11 +533,32 @@ test("a reload on the first page shows the feed as it is now, not as it was kept
   await expect(page.getByText("A name from before")).toHaveCount(0);
 });
 
+/**
+ * Whether a page error is Safari's own line for one of the site's page fetches that a reload cut off. The feed asks for
+ * the tab beside it ahead (FeedTop.svelte), and a reload while that is on its way stops it. Safari's engine then writes
+ * "Fetch API cannot load <address> due to access control checks." as an error, and Playwright hands it on as a page
+ * error (run 46132452100, PR #457), though the page threw nothing and the person sees nothing: the page is going. Only
+ * that line, for one of the site's own `__data.json` addresses, is this; anything else is a real error.
+ */
+function cutOffByReload(error: Error, site: string): boolean {
+  // Playwright splits the line at its first colon, the one in "http:", and drops the character after it.
+  const line = /^Fetch API cannot load (\S+) due to access control checks\.$/.exec(
+    `${error.name}:/${error.message}`,
+  );
+  if (line?.[1] === undefined) return false;
+  const address = new URL(line[1]);
+  return address.origin === site && address.pathname.endsWith("/__data.json");
+}
+
 test("a reload whose kept feed is shorter than the fresh one puts back the kept feed, and the page keeps working", async ({
   page,
 }) => {
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  let reloading = false;
+  page.on("pageerror", (error) => {
+    if (reloading && cutOffByReload(error, new URL(page.url()).origin)) return;
+    errors.push(error.message);
+  });
   await openFeed(page);
   await page.keyboard.press("ArrowDown");
   await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
@@ -571,8 +592,10 @@ test("a reload whose kept feed is shorter than the fresh one puts back the kept 
     if (cut === 0) throw new Error("the feed kept no clips");
     sessionStorage.setItem(name, JSON.stringify(kept));
   });
+  reloading = true;
   await page.reload();
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  reloading = false;
   await expect(current(page)).toHaveAttribute("data-slug", slug);
   // On to the spinner while the next page is held, and back up: the way up is the last kept clip.
   await page.keyboard.press("ArrowDown");

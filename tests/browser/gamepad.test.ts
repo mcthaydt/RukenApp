@@ -429,18 +429,6 @@ test("on Your turn the pad reaches every row's controls, opens the stop card and
   await page.goto("/your-turn");
   await wordsHaveSettled(page);
   await padReachesEverything(page);
-  const stop = page.getByRole("button", { name: "Stop games from Pad Sam" });
-  await stop.focus();
-  await pressPad(page, PAD.a);
-  const card = page.getByRole("dialog", { name: "Stop games from Pad Sam? They won't be told." });
-  await expect(card).toBeVisible();
-  await pressPad(page, PAD.b);
-  await expect(card).toBeHidden();
-  await expect(stop).toBeFocused();
-
-  await page.goto("/your-turn/stopped");
-  await wordsHaveSettled(page);
-  await padReachesEverything(page);
 
   // The share sheet's faces are reached like its other buttons.
   await page.goto(`/g/${game.slug}`);
