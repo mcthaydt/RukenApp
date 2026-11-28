@@ -68,10 +68,17 @@
   );
 
   $effect(() => {
-    if (!enhanced || data.invite === null || sheet === undefined || sheet.open) return;
+    if (!enhanced || data.invite === null || sheet === undefined || sheet.matches(":modal")) return;
     copied = "";
-    sheet.showModal();
-    void tick().then(() => copyButton?.focus());
+    // Opened by a whole page load, the sheet was drawn open without script; that `open` goes once the script runs, so
+    // it is made modal after that.
+    const opening = sheet;
+    void tick().then(() => {
+      if (opening.matches(":modal")) return;
+      opening.removeAttribute("open");
+      opening.showModal();
+      copyButton?.focus();
+    });
   });
 
   async function closed(): Promise<void> {
@@ -249,9 +256,10 @@
         <ul class="faces">
           {#each data.invite.faces as friend (friend.handle)}
             <li>
+              <!-- The page comes back at the action's own address, so it keeps ?invite and the sheet stays open. -->
               <form
                 method="POST"
-                action="?/invite"
+                action="?invite&/invite"
                 use:enhance={(input) => {
                   // A friend already ticked is already playing: pressing again does nothing more.
                   if (friend.invited) {

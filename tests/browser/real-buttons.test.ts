@@ -4,6 +4,7 @@ import { givePage, makerNumberOf } from "./support/database.ts";
 import { connectGitHubFromFiles, gameWhere, startAtFiles } from "./support/game.ts";
 import { rgb, token } from "../support/look-tokens.ts";
 import { CARD_SCREENS, layoutHasSettled, wordsHaveSettled } from "./support/look.ts";
+import { playtestScene } from "./support/playtest.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { NOT_CONSENTED } from "./support/consent.ts";
 
@@ -205,6 +206,27 @@ for (const state of ["waiting", "live"] as const) {
     await expectRealButtons(page);
   });
 }
+
+test("Playtesters, its invite sheet, and a playtester's and an asker's game page: every action is a real button", async ({
+  browser,
+}) => {
+  test.setTimeout(240_000);
+  const scene = await playtestScene(browser);
+  try {
+    for (const [page, path] of [
+      [scene.maker.page, scene.playtesters],
+      [scene.maker.page, `${scene.playtesters}?invite`],
+      [scene.tester.page, `/g/${scene.slug}`],
+      [scene.asker.page, `/g/${scene.slug}`],
+    ] as const) {
+      await page.goto(path);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expectRealButtons(page);
+    }
+  } finally {
+    await scene.close();
+  }
+});
 
 test("a maker's question: the foot and the how-to are real buttons", async ({ page }) => {
   const { slug } = await gameWhere(page, { state: "live" });

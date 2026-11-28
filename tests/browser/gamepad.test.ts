@@ -5,6 +5,7 @@ import { changeGame, givePage, makeFriends } from "./support/database.ts";
 import { addGame, gameWhere, startAtCheck } from "./support/game.ts";
 import { wordsHaveSettled } from "./support/look.ts";
 import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/pad.ts";
+import { playtestScene } from "./support/playtest.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Everything works with a gamepad (the owner, 2026-11-27: "everything should be fully navigable using a gamepad"; a
@@ -521,4 +522,26 @@ test("the bar shows no ring on a tap or click, and a ring of the button's own sh
   await page.keyboard.press("Tab");
   await expect(you).toBeFocused();
   expect(await ring()).toEqual(pad);
+});
+
+test("the pad reaches everything on Playtesters and its invite sheet, and on a playtester's and an asker's game page", async ({
+  browser,
+}) => {
+  test.setTimeout(240_000);
+  const scene = await playtestScene(browser);
+  try {
+    for (const [page, path] of [
+      [scene.maker.page, scene.playtesters],
+      [scene.maker.page, `${scene.playtesters}?invite`],
+      [scene.tester.page, `/g/${scene.slug}`],
+      [scene.asker.page, `/g/${scene.slug}`],
+    ] as const) {
+      await plugInPad(page);
+      await page.goto(path);
+      await wordsHaveSettled(page);
+      await padReachesEverything(page);
+    }
+  } finally {
+    await scene.close();
+  }
 });

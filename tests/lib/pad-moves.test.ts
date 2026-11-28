@@ -33,6 +33,14 @@ describe("nextBox", () => {
     expect(nextBox(from, [aside, straight], "down")).toBe(1);
   });
 
+  it("goes down a column of buttons, not to a tall video beside it whose middle is lower", () => {
+    // A game's page: the video fills the left column; Play sits at the top of the right one, Share well below it.
+    const video = box(0, 0, 350, 680);
+    const play = box(360, 30, 320, 45);
+    const share = box(360, 140, 95, 45);
+    expect(nextBox(play, [video, share], "down")).toBe(1);
+  });
+
   it("reaches a wide row below from any button above it", () => {
     const wide = box(0, 300, 400, 50);
     for (const from of [box(0, 0), box(350, 0)]) expect(nextBox(from, [wide], "down")).toBe(0);

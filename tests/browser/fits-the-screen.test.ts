@@ -5,6 +5,7 @@ import { asInstalled } from "./support/installed.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { addGame } from "./support/game.ts";
 import { atLaunch, beforeLaunch } from "./support/launch.ts";
+import { playtestScene } from "./support/playtest.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Inside the app the page never scrolls; it works like an app's one window (the owner, 2026-11-24: "within the app ... it
@@ -321,6 +322,44 @@ test.describe("a game's page", () => {
     }
     await atLaunch(context);
   });
+});
+
+// Playtesting, before launch, at its fullest: the maker's page with someone asking and someone playing, its invite
+// sheet, and a playtester's and an asker's game page. Upright the view ends above the bar; sideways (the bar on the
+// right) the page still never scrolls, and the sheet is wholly in the window at every size.
+test("playtesting's screens fit the window at every phone size, and the bar covers nothing", async ({
+  browser,
+}) => {
+  test.setTimeout(240_000);
+  const scene = await playtestScene(browser);
+  const sizes = [
+    { width: 320, height: 568, upright: true },
+    { width: 375, height: 667, upright: true },
+    { width: 667, height: 375, upright: false },
+  ];
+  try {
+    for (const size of sizes) {
+      const at = `at ${String(size.width)} by ${String(size.height)}`;
+      for (const [page, path] of [
+        [scene.maker.page, scene.playtesters],
+        [scene.tester.page, `/g/${scene.slug}`],
+        [scene.asker.page, `/g/${scene.slug}`],
+      ] as const) {
+        await page.setViewportSize(size);
+        await opened(page, path);
+        expect((await overflow(page)).page, `${path} ${at}`).toBe(0);
+        if (size.upright) await expectViewAboveTheBar(page, `${path} ${at}`);
+      }
+      const maker = scene.maker.page;
+      await opened(maker, `${scene.playtesters}?invite`);
+      const sheet = maker.getByRole("dialog", { name: "Invite playtesters" });
+      await expect(sheet).toBeVisible();
+      await expect(sheet).toBeInViewport({ ratio: 1 });
+      expect((await overflow(maker)).page, `the invite sheet ${at}`).toBe(0);
+    }
+  } finally {
+    await scene.close();
+  }
 });
 
 test.describe("a phone held sideways", () => {
