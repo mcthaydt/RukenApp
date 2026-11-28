@@ -6,7 +6,6 @@
 -->
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { followsChanged } from "./asked-ahead.svelte.ts";
 
   interface Props {
     handle: string;
@@ -48,7 +47,6 @@
         return;
       }
       onchange(said.following);
-      void followsChanged();
     } catch {
       // The badge was never changed ahead of the answer, so it already shows how things are.
       problem = true;
