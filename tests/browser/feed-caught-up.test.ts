@@ -80,6 +80,8 @@ test("after the new games, the feed says You're all caught up, and keeps going",
   test.setTimeout(120_000);
   const asked: string[] = [];
   let siteNext: string | null = null;
+  /** The keys of the clips on the first page, read from the page as it came. */
+  const shown = new Set<string>();
   // The stand-in's page waits until the first page has been counted: with few games live, the screen asks for the next
   // page as soon as it starts.
   let release: () => void = () => undefined;
@@ -107,18 +109,30 @@ test("after the new games, the feed says You're all caught up, and keeps going",
       next: string | null;
       caughtUp?: string;
     };
-    expect(page.clips.length).toBeGreaterThanOrEqual(4);
+    // Only clips the screen does not have yet: it leaves out any it has, and with many games live the site may give one
+    // again (its first round is put in order anew on each ask), which moved the line to the page's first clip on main's
+    // run 46115488161. Kept, they would move the line up from where this test looks for it.
+    const fresh = page.clips.filter((clip) => !shown.has(clip.key));
+    expect(fresh.length).toBeGreaterThanOrEqual(4);
     siteNext = page.next;
     // Six clips, so its end, and the ask for the page after it, come soon however many games are live.
     await route.fulfill({
       response,
-      json: { ...page, clips: page.clips.slice(0, 6), caughtUp: page.clips[2]?.key, next: STAND_IN_NEXT },
+      json: { ...page, clips: fresh.slice(0, 6), caughtUp: fresh[2]?.key, next: STAND_IN_NEXT },
     });
   });
 
+  const opened = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/" && response.request().resourceType() === "document",
+  );
   await page.goto("/");
+  // The first page comes as data in the page itself, each clip as `{key:"…"`: what the screen has before it asks for more.
+  for (const found of (await (await opened).text()).matchAll(/\{key:"([^"]+)"/g))
+    shown.add(found[1] as string);
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
   const firstCount = await clips(page).count();
+  expect(shown.size).toBeGreaterThanOrEqual(firstCount);
   // The site's first page says nothing of being caught up: the journeys' site runs on the open order.
   await expect(page.getByText(LINE)).toHaveCount(0);
   release();
