@@ -79,3 +79,32 @@ export function askingFor(settings: FeedPublic, person: Person): Asking {
   if (!person.adult && !(settings.teenPersonal && person.parentSaidYes)) return CROWD;
   return { kind: "full", id: person.userId };
 }
+
+/**
+ * Who the ranker is told is asking, from the browser and the account. The account's Learn from what I do and age are read
+ * only for a signed-in person whose browser said yes to cookies while `learned` is on: for anyone else the feed has no
+ * reason to look. `learningOf` answers "on" only for a known adult with Learn from what I do on; a parent's yes is not
+ * built yet, so an under-18 or anyone of unknown age is "locked" and is the crowd. An account that cannot be read is the
+ * crowd too: the feed never learns from someone it could not check.
+ */
+export async function askingOf(
+  settings: FeedPublic,
+  browser: { userId: string | null; consented: boolean },
+  learningOf: (userId: string) => Promise<"on" | "off" | "locked">,
+): Promise<Asking> {
+  const { userId, consented } = browser;
+  if (!settings.learned || userId === null || !consented) return CROWD;
+  let learning: "on" | "off" | "locked";
+  try {
+    learning = await learningOf(userId);
+  } catch {
+    return CROWD;
+  }
+  return askingFor(settings, {
+    userId,
+    consented,
+    adult: learning !== "locked",
+    parentSaidYes: false,
+    learnFromMe: learning === "on",
+  });
+}
