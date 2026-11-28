@@ -1,0 +1,154 @@
+// Review probe for #462 round 2. Not for commit.
+import { expect, test, type Page } from "@playwright/test";
+import { pageHasSettled } from "./support/account.ts";
+import { CONSENTED_STATE, NOT_CONSENTED } from "./support/consent.ts";
+import { gameWhere } from "./support/game.ts";
+import { asInstalled } from "./support/installed.ts";
+import { wordsHaveSettled } from "./support/look.ts";
+import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/pad.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+test.beforeEach(forgetRateLimits);
+test.use({ storageState: NOT_CONSENTED });
+
+const SIZES = [
+  { width: 320, height: 568 },
+  { width: 375, height: 667 },
+  { width: 667, height: 375 },
+];
+
+const focusedName = (page: Page) =>
+  page.evaluate(() => {
+    const one = document.activeElement;
+    if (!(one instanceof HTMLElement) || one === document.body) return null;
+    return (one.getAttribute("aria-label") ?? one.innerText).trim().replaceAll(/\s+/g, " ");
+  });
+
+for (const size of SIZES) {
+  test(`keyboard ${size.width}x${size.height}: Tab reaches Join and Sign in, Enter opens each, nothing covers them`, async ({ page }) => {
+    if (size.width > size.height) await asInstalled(page);
+    await page.setViewportSize(size);
+    await page.goto("/make");
+    await pageHasSettled(page);
+    await wordsHaveSettled(page);
+    await expect(page.getByRole("button", { name: "I agree" })).toHaveCount(0);
+    const names: (string | null)[] = [];
+    await page.evaluate(() => document.body.focus());
+    for (let i = 0; i < 20; i++) {
+      await page.keyboard.press("Tab");
+      names.push(await focusedName(page));
+    }
+    console.log(`TAB ${size.width}x${size.height}:`, JSON.stringify([...new Set(names)]));
+    expect(names).toContain("Join Ruken");
+    expect(names).toContain("Sign in");
+    for (const name of ["Join Ruken", "Sign in"]) {
+      const link = page.getByRole("main").getByRole("link", { name, exact: true });
+      const box = await link.boundingBox();
+      if (box === null) throw new Error("no box");
+      const hit = await page.evaluate(
+        ({ x, y }) => document.elementFromPoint(x, y)?.closest("a")?.textContent?.trim() ?? null,
+        { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+      );
+      expect(hit, `${name} covered at ${size.width}`).toBe(name);
+      expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+    }
+    // Enter on Sign in
+    await page.getByRole("main").getByRole("link", { name: "Sign in", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/sign-in\?next=%2Fmake|\/cookies/);
+    console.log(`SIGN IN ${size.width}: ${page.url()} h1=${await page.getByRole("heading", { level: 1 }).first().textContent()}`);
+    await expect(page.getByRole("button", { name: "I agree" })).toBeVisible();
+    await page.getByRole("button", { name: "I agree" }).click();
+    await expect(page.getByLabel("Phone number")).toBeVisible();
+    console.log(`SIGN IN after yes ${size.width}: ${page.url()}`);
+    // Enter on Join (in a fresh, unconsented context the yes now stands, so check Join from a new page only for routing)
+  });
+}
+
+test("touch: tap Join Ruken goes to the cookie question then the form", async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: "http://localhost:4173", storageState: NOT_CONSENTED, hasTouch: true, isMobile: true, viewport: { width: 320, height: 568 } });
+  const page = await context.newPage();
+  await page.goto("/make");
+  await pageHasSettled(page);
+  await page.getByRole("main").getByRole("link", { name: "Join Ruken", exact: true }).tap();
+  await expect(page).toHaveURL(/\/cookies\?for=sign-up/);
+  await page.getByRole("button", { name: "I agree" }).tap();
+  await expect(page).toHaveURL("/sign-up?next=%2Fmake");
+  await context.close();
+});
+
+test("pad: Join and Sign in each, by A, lead on and are never stuck", async ({ page }) => {
+  await plugInPad(page);
+  await page.goto("/make");
+  await pageHasSettled(page);
+  await page.mouse.move(0, 0);
+  const seen: (string | null)[] = [];
+  for (let i = 0; i < 12; i++) {
+    await pressPad(page, i < 6 ? PAD.down : PAD.up);
+    seen.push(await focusedName(page));
+    if ((await focusedName(page)) === "Join Ruken") break;
+  }
+  console.log("PAD walk:", JSON.stringify(seen));
+  expect(await focusedName(page)).toBe("Join Ruken");
+  await pressPad(page, PAD.a);
+  await expect(page).toHaveURL(/\/cookies\?for=sign-up/);
+  // pad on the cookies screen reaches I agree
+  await pageHasSettled(page);
+  const onCookies: (string | null)[] = [];
+  for (let i = 0; i < 10 && (await focusedName(page)) !== "I agree"; i++) {
+    await pressPad(page, i < 5 ? PAD.down : PAD.up);
+    onCookies.push(await focusedName(page));
+  }
+  console.log("PAD on /cookies:", JSON.stringify(onCookies));
+  expect(await focusedName(page)).toBe("I agree");
+  await pressPad(page, PAD.a);
+  await expect(page).toHaveURL("/sign-up?next=%2Fmake");
+});
+
+test.describe("a like pressed on the feed, unanswered, then the plus", () => {
+  let live: { slug: string; name: string };
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(180_000);
+    await forgetRateLimits();
+    const makerContext = await browser.newContext({ storageState: CONSENTED_STATE, baseURL: "http://localhost:4173" });
+    live = await gameWhere(await makerContext.newPage(), { state: "live" });
+    await makerContext.close();
+  });
+  test("what the pitch shows, and whether the pad can answer", async ({ page }) => {
+    test.setTimeout(120_000);
+    await plugInPad(page);
+    await page.goto("/");
+    await pageHasSettled(page);
+    await page.getByRole("button", { name: "Not now" }).click();
+    const clip = page.locator(`section[data-slug="${live.slug}"]`).first();
+    await clip.scrollIntoViewIfNeeded();
+    await clip.getByRole("button", { name: "Like", exact: true }).click();
+    await expect(page.getByText("To like this game", { exact: false })).toBeVisible();
+    await page.getByRole("navigation", { name: "Ruken" }).getByRole("link", { name: "Add a game", exact: true }).click();
+    await expect(page).toHaveURL("/make");
+    await pageHasSettled(page);
+    await wordsHaveSettled(page);
+    await page.waitForTimeout(800);
+    const cardShown = await page.getByRole("button", { name: "I agree" }).isVisible();
+    const join = page.getByRole("main").getByRole("link", { name: "Join Ruken", exact: true });
+    const box = await join.boundingBox();
+    const hit = box && (await page.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.closest("a,button,aside")?.outerHTML.slice(0, 80) ?? null,
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    ));
+    console.log(`LIKE-THEN-PLUS card=${cardShown} hitOnJoin=${hit}`);
+    await page.screenshot({ path: test.info().outputPath("like-then-plus.png") });
+    if (cardShown) {
+      await page.mouse.move(0, 0);
+      const seen: (string | null)[] = [];
+      for (let i = 0; i < 14; i++) {
+        await pressPad(page, i < 7 ? PAD.down : PAD.up);
+        seen.push(await focusedName(page));
+      }
+      console.log("LIKE-THEN-PLUS pad:", JSON.stringify([...new Set(seen)]));
+      await page.screenshot({ path: test.info().outputPath("like-then-plus-settled.png") });
+      try { await padReachesEverything(page); console.log("LIKE-THEN-PLUS full walk: all reached"); }
+      catch (e) { console.log("LIKE-THEN-PLUS full walk:", String(e).split("\n").slice(0, 12).join(" | ")); }
+    }
+  });
+});
