@@ -1,0 +1,26 @@
+import { afterAll, beforeAll, expect, it } from "vitest";
+import { createPagesService, type PagesService } from "../../../src/features/pages/service.ts";
+import { createUser } from "../../support/create-user.ts";
+import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
+import { MemoryFileStore } from "../../support/memory-file-store.ts";
+
+let database: TestDatabase | undefined;
+let service: PagesService;
+beforeAll(async () => {
+  database = await startTestDatabase();
+  service = createPagesService({ db: database.prisma, files: new MemoryFileStore() });
+});
+afterAll(async () => { await database?.stop(); });
+
+// What take-down does now: removePage, then makeUnlistedPage from the page's name.
+it("a page whose name matches its address is taken down and comes back unlisted at the SAME address", async () => {
+  const me = await createUser(database!.prisma);
+  await service.savePage(me, { handle: "night-owl", name: "Night Owl", oneLine: "" });
+  await service.removePage(me);
+  const again = await service.makeUnlistedPage(me, "Night Owl");
+  const other = await createUser(database!.prisma);
+  let otherError = "";
+  try { await service.savePage(other, { handle: "night-owl", name: "Other", oneLine: "" }); } catch (e) { otherError = String(e); }
+  console.log("PROBE re-made address:", again.handle, "| another maker taking night-owl:", otherError || "allowed");
+  expect(again.handle).toBe("night-owl");
+});
