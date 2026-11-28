@@ -99,6 +99,10 @@
     first.ask ? { [first.ask.key]: first.ask } : {},
   );
 
+  // The clips "You're all caught up" goes on, by key: where each page said the person had seen everything new.
+  // svelte-ignore state_referenced_locally
+  let caughtUp = $state<string[]>(first.caughtUp === undefined ? [] : [first.caughtUp]);
+
   function sayGotIt(): void {
     gotIt = true;
     clearTimeout(gotItTimer);
@@ -286,6 +290,7 @@
       const waiting = current >= had;
       clips = [...clips, ...page.clips.filter((clip) => !have.has(clip.key))];
       if (page.ask) asks = { ...asks, [page.ask.key]: page.ask };
+      if (page.caughtUp !== undefined) caughtUp = [...caughtUp, page.caughtUp];
       next = page.next;
       more = "idle";
       if (waiting) {
@@ -623,6 +628,11 @@
             answered(clip.key, index);
           }}
         />
+
+        {#if caughtUp.includes(clip.key)}
+          <!-- One line to read on the first clip the person has seen before; the feed keeps going under it. -->
+          <p class="caughtup">You're all caught up</p>
+        {/if}
 
         {#if index === 0 && hint !== null}
           <div class="hints">
@@ -1050,6 +1060,27 @@
   .hints p {
     margin: 0;
   }
+  /* "You're all caught up": a frosted line just under the top bar, a word to read and never in the way of a press. */
+  .caughtup {
+    position: absolute;
+    top: calc(max(0.75rem, env(safe-area-inset-top)) + var(--size-target) + 0.75rem);
+    left: 50%;
+    z-index: 2;
+    translate: -50% 0;
+    width: max-content;
+    max-width: calc(100% - 2rem);
+    margin: 0;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-button);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+    color: var(--chalk);
+    text-shadow: var(--glass-ink);
+    text-align: center;
+    pointer-events: none;
+  }
   .hints p + p {
     margin-top: 0.25rem;
     font: var(--text-small);
@@ -1284,6 +1315,11 @@
       translate: none;
       max-width: calc(100% - 0.75rem - 5.5rem - 1.5rem);
     }
+    /* On the first clip with "You're all caught up" too, the tips stand under the line (a 2.75rem line, then a gap),
+       where they first stood over it and hid it (review 3 of #440). */
+    .caughtup + .hints {
+      top: calc(max(0.75rem, env(safe-area-inset-top)) + var(--size-target) + 0.75rem + 2.75rem + 0.5rem);
+    }
   }
   /* A short phone held upright (an iPhone SE, 568px): the maker, their name and five round buttons stand taller than
      the room between the top bar and the bar, so the maker's picture went under Search and the tabs. Here the column
@@ -1335,6 +1371,10 @@
     /* Under the top bar, where the band cannot cover them either. */
     .hints {
       top: calc(0.75rem + var(--size-target) + 0.5rem);
+    }
+    /* On the first clip with the line too, the hints stand under it, with a gap (they first stood right against it). */
+    .caughtup + .hints {
+      top: calc(max(0.75rem, env(safe-area-inset-top)) + var(--size-target) + 0.75rem + 2.75rem + 0.5rem);
     }
     /* The round buttons stand in a column of their own just left of the bar, from the bottom up: the bar takes the
        middle of the right edge, so under it there is no room for them (the owner, 2026-11-27: they sat on each other). */

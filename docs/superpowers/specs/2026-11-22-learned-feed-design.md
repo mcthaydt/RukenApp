@@ -142,11 +142,11 @@ Every unit waits on the private-move spec's P0, P2, P3 and P4. The units' order 
 - **A13.** An architecture test: nothing under `src/features/feed/` imports from `src/features/money/`, and from `src/features/membership/` only the membership status read (10.1).
 
 Steps:
-- [ ] 1. Journey A11, failing.
-- [ ] 2. The viewer and `FEED_PUBLIC` (A5), test first.
+- [x] 1. Journey A11, failing.
+- [x] 2. The viewer and `FEED_PUBLIC` (A5), test first.
 - [x] 3. The play read and its Postgres test (A9).
 - [ ] 4. `/healthz/feed` (A8).
-- [ ] 5. The caught-up line.
+- [x] 5. The caught-up line.
 - [ ] 6. The architecture test (A13); `verify` on the three devices; the journey green.
 
 ### Unit F: the few-plays note (public half)
