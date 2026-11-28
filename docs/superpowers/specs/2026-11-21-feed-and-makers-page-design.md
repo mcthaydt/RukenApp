@@ -319,6 +319,8 @@ Tasks:
 
 ### Unit K: social icons (lane 3)
 
+**Moved to slice 4, Pages** (the owner, 2026-11-28 02:08 UTC: "Yes", to holding it there and closing slice 3 without it). Its build waits as draft pull request #443 and is reworked with the page builder there.
+
 Acceptance:
 
 - **K1.** `src/features/pages/library/social-icons.json` holds one path (`d`, drawn in a 24 by 24 box) per site id and no other key; each path starts with `M` and holds only path letters, digits, spaces, commas, dots and minus signs. `social-icons-LICENSE.txt` is the package's licence and says CC0; `social-icons-source.json` names the package, its version, its tarball and its integrity, measured from the download. The package is not in `package.json`. If the licence is not CC0, or a mark is missing from the package, stop and report; a missing mark's site is left out.
