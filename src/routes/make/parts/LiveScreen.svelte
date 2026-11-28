@@ -132,7 +132,7 @@
       {@render sendForm(true)}
     {/if}
     {#if playtestersAddress !== null}
-      <a class="go playtesterslink" href={playtestersAddress}>{PLAYTEST_WORDS.link}</a>
+      <a class="go" href={playtestersAddress}>{PLAYTEST_WORDS.link}</a>
     {/if}
     <a class="foot" href={pageAddress}>See it on Ruken</a>
     <a class="foot" href="/make">Back to your games</a>

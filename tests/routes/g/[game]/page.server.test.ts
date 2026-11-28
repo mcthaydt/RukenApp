@@ -14,6 +14,7 @@ const EVERY_QUESTION = [
   "sittingOf",
   "playersThisWeek",
   "friendsOf",
+  "viewOf",
 ];
 let allAsked: () => void = () => {};
 let gate = new Promise<void>((open) => {
@@ -80,7 +81,7 @@ vi.mock("../../../../src/features/pages/pages.ts", async (original) => ({
 }));
 vi.mock("../../../../src/features/launch/launch.ts", async (original) => ({
   ...(await original<object>()),
-  launchServices: () => ({ screenFor: question("screenFor", { before: false }) }),
+  launchServices: () => ({ screenFor: question("screenFor", { before: false }), now: () => 0 }),
 }));
 vi.mock("../../../../src/features/play/play.ts", async (original) => ({
   ...(await original<object>()),
@@ -92,6 +93,11 @@ vi.mock("../../../../src/features/play/play.ts", async (original) => ({
 vi.mock("../../../../src/features/sends/sends.ts", async (original) => ({
   ...(await original<object>()),
   sendsServices: () => ({ friendsOf: question("friendsOf", [{ handle: "pal", name: "Pal", photo: null }]) }),
+}));
+
+vi.mock("../../../../src/features/playtest/playtest.ts", async (original) => ({
+  ...(await original<object>()),
+  playtestServices: () => ({ service: { viewOf: question("viewOf", { badge: true, action: "ask" }) } }),
 }));
 
 const { load } = await import("../../../../src/routes/g/[game]/+page.server.ts");
@@ -115,5 +121,6 @@ describe("a game's page", () => {
     expect(data.more).toEqual([{ slug: "other", name: "Other", wideClip: "/media/o.mp4" }]);
     expect(data.launch).toEqual({ before: false });
     expect(data.friends).toEqual([{ handle: "pal", name: "Pal", photo: null }]);
+    expect(data.playtest).toEqual({ badge: true, action: "ask" });
   }, 2_000);
 });

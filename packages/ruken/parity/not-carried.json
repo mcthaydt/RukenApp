@@ -2,5 +2,25 @@
   {
     "action": "make/[game]#seen",
     "why": "It only closes the accepted screen, which the command line never shows."
+  },
+  {
+    "action": "make/[game]/playtesters#asking",
+    "why": "Playtesting lasts only until Ruken opens on 30 November, and it is the maker answering people they see by face and name on the Playtesters page, so the command line has no version of it."
+  },
+  {
+    "action": "make/[game]/playtesters#answer",
+    "why": "Playtesting lasts only until Ruken opens on 30 November, and it is the maker answering people they see by face and name on the Playtesters page, so the command line has no version of it."
+  },
+  {
+    "action": "make/[game]/playtesters#remove",
+    "why": "Playtesting lasts only until Ruken opens on 30 November, and it is the maker answering people they see by face and name on the Playtesters page, so the command line has no version of it."
+  },
+  {
+    "action": "make/[game]/playtesters#invite",
+    "why": "Playtesting lasts only until Ruken opens on 30 November, and it is the maker answering people they see by face and name on the Playtesters page, so the command line has no version of it."
+  },
+  {
+    "action": "make/[game]/playtesters#newLink",
+    "why": "Playtesting lasts only until Ruken opens on 30 November, and it is the maker answering people they see by face and name on the Playtesters page, so the command line has no version of it."
   }
 ]

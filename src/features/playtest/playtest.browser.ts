@@ -6,3 +6,4 @@ export { dayWords, PLAYTEST_WORDS } from "./words.ts";
 export { default as PlaytestAsk } from "./PlaytestAsk.svelte";
 export { default as PlaytestBadge } from "./PlaytestBadge.svelte";
 export { default as PlaytestPlay } from "./PlaytestPlay.svelte";
+export { default as PlaytestersScreen } from "./PlaytestersScreen.svelte";

@@ -21,6 +21,7 @@ export function actionOfRoute(routeId: string | null): GatedAction {
   if (id.startsWith("/sign-in") || id.startsWith("/forgot-password")) return "sign-in";
   if (id.startsWith("/sign-up")) return "sign-up";
   if (id.startsWith("/join")) return "join";
+  if (id === "/g/[game]/playtest") return "account";
   if (id.startsWith("/g/")) return id.endsWith("wishlist") ? "save" : "play";
   if (id === "/[handle=handle]/follow") return "follow";
   return "account";

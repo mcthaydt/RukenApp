@@ -2116,7 +2116,7 @@ a.foot:active {
 }
 
 /* Playtesters, above "See it on Ruken": a → link on its own line, before launch only (playtesting spec). */
-.live a.playtesterslink {
+.live a.go {
   display: flex;
   width: fit-content;
   margin-top: 1rem;
