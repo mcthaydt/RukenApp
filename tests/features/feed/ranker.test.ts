@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ListedGame } from "../../../src/features/games/games.ts";
-import type { RankedPage, Ranker, RankRequest } from "../../../src/features/feed/ranker.ts";
+import type { RankedItem, RankedPage, Ranker, RankRequest } from "../../../src/features/feed/ranker.ts";
 import {
   createFeedService,
   packPlays,
@@ -185,16 +185,65 @@ describe("the feed through a ranker", () => {
     expect(lines).toEqual([]);
   });
 
-  it("says nothing of being caught up when the ranker does not, or when nothing shown is left after that point", async () => {
-    for (const caughtUpAt of [null, 3]) {
-      const { ranker } = stubRanker(() => Promise.resolve({ ...PRIVATE_PAGE, caughtUpAt }));
-      const { service } = serviceWith({ privateRanker: () => ranker });
-      expect((await service.page(null)).caughtUp).toBeUndefined();
-    }
-    // Caught up at the very first item: the line is on the first clip.
-    const { ranker } = stubRanker(() => Promise.resolve({ ...PRIVATE_PAGE, caughtUpAt: 0 }));
+  it("says nothing of being caught up when the ranker does not, and marks the first clip when caught up at the start", async () => {
+    const { ranker } = stubRanker(() => Promise.resolve({ ...PRIVATE_PAGE, caughtUpAt: null }));
     const { service } = serviceWith({ privateRanker: () => ranker });
-    expect((await service.page(null)).caughtUp).toBe("k1");
+    const page = await service.page(null);
+    expect(page.caughtUp).toBeUndefined();
+    expect(page.next).toBe("p.private-cursor");
+    const { ranker: atStart } = stubRanker(() => Promise.resolve({ ...PRIVATE_PAGE, caughtUpAt: 0 }));
+    const { service: second } = serviceWith({ privateRanker: () => atStart });
+    expect((await second.page(null)).caughtUp).toBe("k1");
+  });
+
+  it("caught up right after a page's last clip: the line goes on the next page's first clip, and only there", async () => {
+    // The point is past this page's last clip (3 items), or at a clip whose game is gone with nothing shown after it.
+    const cases: [number, RankedItem[]][] = [
+      [3, PRIVATE_PAGE.items],
+      [
+        2,
+        [
+          { gameId: "id-c", slot: 0, key: "k1" },
+          { gameId: "id-gone", slot: 0, key: "k2" },
+          { gameId: "id-gone", slot: 0, key: "k4" },
+        ],
+      ],
+    ];
+    for (const [caughtUpAt, items] of cases) {
+      const pages: RankedPage[] = [
+        { ...PRIVATE_PAGE, items: [...items], caughtUpAt, next: "one", ask: null },
+        {
+          ...PRIVATE_PAGE,
+          items: [
+            { gameId: "id-gone", slot: 0, key: "k5" },
+            { gameId: "id-a", slot: 0, key: "k6" },
+          ],
+          caughtUpAt: null,
+          next: "two",
+          ask: null,
+        },
+        {
+          ...PRIVATE_PAGE,
+          items: [{ gameId: "id-c", slot: 0, key: "k7" }],
+          caughtUpAt: null,
+          next: "three",
+          ask: null,
+        },
+      ];
+      const { ranker, asked } = stubRanker(() => Promise.resolve(pages[asked.length - 1]));
+      const { service } = serviceWith({ privateRanker: () => ranker });
+
+      const first = await service.page(null);
+      expect(first.caughtUp).toBeUndefined();
+      const second = await service.page(first.next ?? "");
+      // The ranker is handed its own address, whatever the app wrote in front of it.
+      expect(asked[1]?.after).toBe("one");
+      // The next page's first clip shown (k5's game is gone, so k6).
+      expect(second?.caughtUp).toBe("k6");
+      const third = await service.page(second?.next ?? "");
+      expect(asked[2]?.after).toBe("two");
+      expect(third?.caughtUp).toBeUndefined();
+    }
   });
 
   it("hands the ranker plain facts: the live games under 18+, the week's member beats, the time and the crowd", async () => {

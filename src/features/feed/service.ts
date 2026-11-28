@@ -35,6 +35,8 @@ export const PRIVATE_WAIT_MS = 800;
  */
 const PRIVATE_PREFIX = "p.";
 const OPEN_PREFIX = "o.";
+/** A private address whose page starts where the person is caught up: the page before ended right at that point. */
+const CAUGHT_UP_PREFIX = "pc.";
 
 export interface FeedServiceDeps {
   clock: Clock;
@@ -94,7 +96,7 @@ export interface FeedClip {
 /**
  * A page of the feed, and the address of the one after it (null only when no game is live). `caughtUp` is the clip
  * "You're all caught up" goes on, there only when the ranker said where the person is caught up: the first clip shown at
- * or after that point, since a game the ranker named may be left out. `ask` is the Good pick card: shown on the clip `key`, about the game `slug`; only a person the
+ * or after that point, since a game the ranker named may be left out, or the next page's first when this page has none. `ask` is the Good pick card: shown on the clip `key`, about the game `slug`; only a person the
  * feed learns from is asked, and only once about a game.
  */
 export interface FeedPage {
@@ -238,9 +240,11 @@ export function createFeedService(deps: FeedServiceDeps) {
     asking: Asking = CROWD,
     viewerId: string | null = null,
   ): Promise<FeedPage | null> {
-    let cursor: { made: "private" | "open"; rest: string } | null = null;
+    let cursor: { made: "private" | "open"; rest: string; caughtUp?: true } | null = null;
     if (after !== null) {
-      if (after.startsWith(PRIVATE_PREFIX))
+      if (after.startsWith(CAUGHT_UP_PREFIX))
+        cursor = { made: "private", rest: after.slice(CAUGHT_UP_PREFIX.length), caughtUp: true };
+      else if (after.startsWith(PRIVATE_PREFIX))
         cursor = { made: "private", rest: after.slice(PRIVATE_PREFIX.length) };
       else if (after.startsWith(OPEN_PREFIX))
         cursor = { made: "open", rest: after.slice(OPEN_PREFIX.length) };
@@ -329,17 +333,21 @@ export function createFeedService(deps: FeedServiceDeps) {
       viewerId === null || deps.followedAmong === undefined || makers.size === 0
         ? new Set<string>()
         : await deps.followedAmong(viewerId, [...makers.keys()]);
+    // Where "You're all caught up" goes: the first clip shown at or after the ranker's point, or this page's first when
+    // the page before ended right at it. With nothing shown from there on, it goes on to the next page's first clip.
+    const carried = cursor?.caughtUp === true && prefix === PRIVATE_PREFIX;
+    const from = carried ? 0 : ranked.caughtUpAt;
+    const shownKeys = new Set(shown.map(({ key }) => key));
+    const caughtUp =
+      from === null ? undefined : ranked.items.slice(from).find((item) => shownKeys.has(item.key))?.key;
+    const carryOn = from !== null && caughtUp === undefined && prefix === PRIVATE_PREFIX;
     const result: FeedPage = {
-      next: ranked.next === null ? null : `${prefix}${ranked.next}`,
+      next: ranked.next === null ? null : `${carryOn ? CAUGHT_UP_PREFIX : prefix}${ranked.next}`,
       clips: shown.map(({ key, game }) =>
         clipOf(key, game, makers.get(game.makerUserId), followed.has(game.makerUserId), viewerId, marks),
       ),
     };
-    if (ranked.caughtUpAt !== null) {
-      const shownKeys = new Set(shown.map(({ key }) => key));
-      const at = ranked.items.slice(ranked.caughtUpAt).find((item) => shownKeys.has(item.key))?.key;
-      if (at !== undefined) result.caughtUp = at;
-    }
+    if (caughtUp !== undefined) result.caughtUp = caughtUp;
     const ask = ranked.ask;
     if (ask !== null && asking.kind === "full" && deps.asking !== undefined) {
       const asked = byId.get(ask.gameId);
