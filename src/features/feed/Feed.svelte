@@ -30,6 +30,7 @@
   import type { TabKey } from "./tabs.ts";
   import type { Friend } from "../sends/sends.browser.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
+  import { PlaytestBadge, PlaytestPlay, type FeedPlaytest } from "../playtest/playtest.browser.ts";
 
   let {
     first,
@@ -38,6 +39,7 @@
     tune = false,
     news = false,
     friends = null,
+    playtest = { badge: [], play: [] },
   }: {
     first: FeedPage;
     /** Which of the top bar's tabs this is: every game, or the makers the person follows (Followed.svelte). */
@@ -50,6 +52,8 @@
     tune?: boolean;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
     launch: { before: false } | { before: true; opens: string; wished: string[] };
+    /** Before launch: the games that show this person the Playtest badge, and the ones they play as a playtester. */
+    playtest?: FeedPlaytest;
   } = $props();
 
   /** How many clips before the end of what the feed has it asks for the next page, so a person rarely meets the spinner. */
@@ -688,11 +692,16 @@
             {/if}
             <!-- A swipe can start on the name too, so it never loads the game's page (and who brought this person)
                  ahead of a press. -->
+            {#if playtest.badge.includes(clip.slug)}
+              <PlaytestBadge />
+            {/if}
             <a class="gamelink" data-sveltekit-preload-data="off" href={`/g/${clip.slug}`}>
               <h2>{clip.name}</h2>
               <p>{clip.oneLine}</p>
             </a>
-            {#if launch.before}
+            {#if playtest.play.includes(clip.slug)}
+              <PlaytestPlay slug={clip.slug} buttonClass="button play" />
+            {:else if launch.before}
               <WishlistButton
                 slug={clip.slug}
                 wished={launch.wished.includes(clip.slug)}
@@ -1189,12 +1198,14 @@
     font: var(--text-small);
     font-weight: 600;
   }
-  /* Play is coloured glass on the glass under the words. */
-  .band .button {
+  /* Play is coloured glass on the glass under the words, a playtester's Play too. */
+  .band .button,
+  .band :global(.playtestplay .button) {
     background: var(--glass-pay);
     box-shadow: var(--glass-edge);
   }
   .band a,
+  .band :global(.playtestplay a),
   .side button {
     pointer-events: auto;
   }
@@ -1266,7 +1277,8 @@
     overflow-wrap: anywhere;
   }
   .play,
-  .band :global(.wish .play) {
+  .band :global(.wish .play),
+  .band :global(.playtestplay .play) {
     width: 100%;
     margin: 0;
   }
@@ -1372,9 +1384,18 @@
       row-gap: 0.25rem;
       padding: 0.5rem 0.75rem;
     }
-    .play {
+    .play,
+    .band :global(.playtestplay .play) {
       width: auto;
       padding-inline: 1.75rem;
+    }
+    /* The badge and a playtester's line take the band's whole width, so Play keeps its place beside the name. */
+    .band :global(.playtestbadge),
+    .band :global(.playtestplay .free) {
+      grid-column: 1 / -1;
+    }
+    .band :global(.playtestplay) {
+      display: contents;
     }
     .gamelink h2 {
       font-size: 1.25rem;
@@ -1405,7 +1426,8 @@
   .maker:focus-visible,
   .gamelink:focus-visible,
   .play:focus-visible,
-  .band :global(.wish .play:focus-visible) {
+  .band :global(.wish .play:focus-visible),
+  .band :global(.playtestplay .play:focus-visible) {
     outline-color: var(--chalk);
   }
 </style>

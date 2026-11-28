@@ -19,6 +19,7 @@ import {
 import { launchServices } from "../../../features/launch/launch.ts";
 import { pagesServices } from "../../../features/pages/pages.ts";
 import { deviceOf, playServices } from "../../../features/play/play.ts";
+import { playtestServices } from "../../../features/playtest/playtest.ts";
 import { sendsServices } from "../../../features/sends/sends.ts";
 import type { PageServerLoad } from "./$types";
 
@@ -47,7 +48,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
   const ownOrStaff =
     caller.kind === "user" &&
     (caller.userId === game.makerUserId || caller.staffRoles.some((role) => GAME_STAFF_ROLES.includes(role)));
-  const [member, makerPage, more, launch, sitting, players, friends] = await Promise.all([
+  const [member, makerPage, more, launch, sitting, players, friends, playtest] = await Promise.all([
     caller.kind === "user" && !ownOrStaff && !game.freeToPlay
       ? membershipServices().service.isMember(caller.userId)
       : false,
@@ -67,6 +68,12 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
       : Promise.resolve(null),
     // The faces for "Send to a friend" in the share sheet: one statement, asked only for a signed-in person.
     caller.kind === "user" ? sendsServices().friendsOf(caller.userId) : Promise.resolve(null),
+    // The badge, Ask or a playtester's Play, before launch only (playtesting spec).
+    playtestServices().service.viewOf(
+      game.slug,
+      caller.kind === "user" ? caller.userId : null,
+      launchServices().now(cookies),
+    ),
   ]);
 
   let cost: Cost = "join";
@@ -87,6 +94,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
     device: deviceOf(request.headers.get("user-agent")),
     cost,
     launch,
+    playtest,
     price: dollars(PREMIUM_PRICES_CENTS.monthly),
     sitting: sitting === null ? null : sittingWords(sitting),
     players,
