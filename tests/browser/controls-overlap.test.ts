@@ -1,8 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
-import { pageHasSettled, signUp } from "./support/account.ts";
-import { CONSENTED_STATE } from "./support/consent.ts";
-import { followById, givePage, likeById, personWithPage, userIdOf } from "./support/database.ts";
-import { addGame } from "./support/game.ts";
+import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
+import { CONSENTED_STATE, consented } from "./support/consent.ts";
+import {
+  fillAnswers,
+  followById,
+  givePage,
+  likeById,
+  personWithPage,
+  putGameWhereStaffLeaveIt,
+  userIdOf,
+} from "./support/database.ts";
+import { addDraft, addGame, giveRealClips } from "./support/game.ts";
 import { asInstalled } from "./support/installed.ts";
 import { atLaunch, beforeLaunch } from "./support/launch.ts";
 import { wordsHaveSettled } from "./support/look.ts";
@@ -50,13 +58,29 @@ const SIGNED_IN = [
 ];
 
 let live: Awaited<ReturnType<typeof addGame>>;
+/** The maker's page, with two live games: a full row of cards, their names, Play and Wishlist, above the bar. */
+let makerHandle = "";
 
 test.beforeAll(async ({ browser, request }) => {
   test.setTimeout(240_000);
   await forgetRateLimits();
   // A live game whose maker has a page, so its clip carries the maker's picture, name and plus at the top of the column.
   live = await addGame(browser, request);
-  await givePage(live.maker, { name: "Night Owl Games Studio", oneLine: "I make small, hard games." });
+  makerHandle = (await givePage(live.maker, { name: "Night Owl Games Studio", oneLine: "I make small, hard games." }))
+    .handle;
+  // A second live game of the same maker's, made signed in as them in a browser of its own.
+  await forgetRateLimits();
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  try {
+    const page = await context.newPage();
+    await signInAs(page, live.maker.number, live.maker.password);
+    const { slug } = await addDraft(page);
+    await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+    await giveRealClips(page, slug);
+    await putGameWhereStaffLeaveIt(slug, { state: "live" });
+  } finally {
+    await context.close();
+  }
 });
 test.beforeEach(async ({ page }) => {
   // The sizes are set here, so one engine is enough besides Safari's: the iPhone and the iPad's Chrome.
@@ -238,7 +262,7 @@ test.describe("signed out", () => {
     context,
   }) => {
     test.setTimeout(240_000);
-    const paths = [...SIGNED_OUT, `/g/${live.slug}`];
+    const paths = [...SIGNED_OUT, `/g/${live.slug}`, `/${makerHandle}`];
     await expectNothingOverlaps(page, paths, "after launch");
     await beforeLaunch(context);
     await expectNothingOverlaps(page, paths, "before launch");
@@ -260,7 +284,7 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
   await likeById(friend.id, live.slug, true);
   // Following the maker, so Followed shows the clip too.
   await followById(meId, live.makerUserId);
-  const paths = [...SIGNED_IN, `/g/${live.slug}`, `/${handle}`];
+  const paths = [...SIGNED_IN, `/g/${live.slug}`, `/${handle}`, `/${makerHandle}`];
   await expectNothingOverlaps(page, paths, "after launch");
   await beforeLaunch(context);
   await expectNothingOverlaps(page, paths, "before launch");
