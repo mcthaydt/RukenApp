@@ -5,12 +5,11 @@ import { stillOfClip } from "../../lib/stills.ts";
 import type { ListedGame } from "../games/games.ts";
 import type { Friend } from "./friend.ts";
 import type { SendLimits } from "./limits.ts";
-import type { StoppedPerson } from "./stopped.ts";
 import { canSend, friendPagesOf } from "./who.ts";
 
 // Your turn: friends send each other games, and each person has a list of the games sent to them. Built from what it
 // needs, so a test hands it a database, a clock and neighbours of its own. Only the receiver reads or changes their list;
-// the sender is never told whether a game was seen, removed or stopped.
+// the sender is never told whether a game was seen or removed.
 
 /** The most faces the share sheet shows. */
 export const FRIENDS_MAX = 8;
@@ -51,7 +50,7 @@ function thumbnailOf(clip: string): string | null {
 
 export type Sends = ReturnType<typeof createSends>;
 
-export type { Friend, StoppedPerson };
+export type { Friend };
 
 export function createSends(deps: SendsDeps) {
   const { db, clock, limiter } = deps;
@@ -99,8 +98,7 @@ export function createSends(deps: SendsDeps) {
 
     /**
      * Sends a live game to the person at this address. Sending it again is the same row, and two sends at the same
-     * moment make one (`skipDuplicates` lets the unique key settle it). A receiver who stopped the sender gets nothing,
-     * and the sender is told it went.
+     * moment make one (`skipDuplicates` lets the unique key settle it).
      */
     async send(fromId: string, gameSlug: string, toHandle: string): Promise<SendOutcome> {
       const [game, page] = await Promise.all([
@@ -117,8 +115,6 @@ export function createSends(deps: SendsDeps) {
       if (!(await canSend(db, fromId, toId))) return "not friends";
       const wait = await overLimit(fromId);
       if (wait !== null) return { limited: wait };
-      const stopped = await db.sendStop.count({ where: { stopperId: toId, stoppedId: fromId } });
-      if (stopped > 0) return "sent";
       await db.gameSend.createMany({
         data: [{ fromId, toId, gameId: game.id, sentAt: new Date(clock.epochMs()) }],
         skipDuplicates: true,
@@ -173,46 +169,6 @@ export function createSends(deps: SendsDeps) {
     async remove(toId: string, sendId: string): Promise<"removed" | "not found"> {
       const gone = await db.gameSend.deleteMany({ where: { id: sendId, toId } });
       return gone.count === 1 ? "removed" : "not found";
-    },
-
-    /**
-     * Stops the person who sent this row: every game they sent this person goes, and nothing they send reaches them
-     * again. Stopping twice is one row. Someone else's row is "not found", and nothing changes.
-     */
-    async stop(stopperId: string, sendId: string): Promise<"stopped" | "not found"> {
-      const row = await db.gameSend.findFirst({
-        where: { id: sendId, toId: stopperId },
-        select: { fromId: true },
-      });
-      if (row === null) return "not found";
-      await db.$transaction([
-        db.sendStop.createMany({
-          data: [{ stopperId, stoppedId: row.fromId, stoppedAt: new Date(clock.epochMs()) }],
-          skipDuplicates: true,
-        }),
-        db.gameSend.deleteMany({ where: { fromId: row.fromId, toId: stopperId } }),
-      ]);
-      return "stopped";
-    },
-
-    /** The people this person stopped, the latest first, by their page's name (null when their page has gone). */
-    async stoppedBy(stopperId: string): Promise<StoppedPerson[]> {
-      const rows = await db.sendStop.findMany({
-        where: { stopperId },
-        orderBy: [{ stoppedAt: "desc" }, { id: "desc" }],
-        select: { id: true, stoppedId: true },
-      });
-      const pages = await pagesOf(rows.map((row) => row.stoppedId));
-      return rows.map((row) => ({
-        id: row.id,
-        name: pages.get(row.stoppedId)?.name ?? null,
-      }));
-    },
-
-    /** Lets a stopped person's games through again. Someone else's stop is "not found", and nothing changes. */
-    async undo(stopperId: string, stopId: string): Promise<"undone" | "not found"> {
-      const gone = await db.sendStop.deleteMany({ where: { id: stopId, stopperId } });
-      return gone.count === 1 ? "undone" : "not found";
     },
   };
 }

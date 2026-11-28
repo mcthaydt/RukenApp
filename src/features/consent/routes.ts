@@ -70,12 +70,10 @@ export const GATED: readonly string[] = [
   // More like this, Less like this and Good pick, from a clip: kept about a signed-in person only.
   "/api/feed/taste",
   "/api/feed/good-pick",
-  // Sending a game, marking Your turn seen, Remove, Stop, and the people stopped with their Undo.
+  // Sending a game, marking Your turn seen, and Remove.
   "/your-turn/send",
   "/your-turn/seen",
   "/your-turn/remove",
-  "/your-turn/stop",
-  "/your-turn/stopped",
 ];
 
 export type RouteKind = "open" | "machine" | "gated";
