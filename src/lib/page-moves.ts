@@ -203,9 +203,20 @@ export function slideWhile(arrived: Promise<unknown>, game: string | null = null
       if (fresh !== null) name(fresh, naming);
       if (fresh instanceof HTMLVideoElement) waitForPicture(fresh, naming);
     });
+    // While a move slides, the browser draws pictures of the pages over the page itself, and a finger that comes down
+    // lands on those pictures, so a swipe made then moved nothing (the owner, 2026-11-28, on a Galaxy: Back from a
+    // game, then a swipe down, misbehaves at random). A finger on the screen ends the slide at once, so the swipe it
+    // starts moves the page that is there.
+    const fingerDown = () => {
+      slide.skipTransition();
+    };
+    window.addEventListener("touchstart", fingerDown, { capture: true, passive: true });
+    window.addEventListener("pointerdown", fingerDown, { capture: true, passive: true });
     void slide.finished
       .catch(() => undefined)
       .then(() => {
+        window.removeEventListener("touchstart", fingerDown, { capture: true });
+        window.removeEventListener("pointerdown", fingerDown, { capture: true });
         unname(old, naming);
         unname(fresh, naming);
         endWait(naming);
