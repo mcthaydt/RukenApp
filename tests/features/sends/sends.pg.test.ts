@@ -304,14 +304,13 @@ describe("the list", () => {
 });
 
 describe("stopping a sender", () => {
-  // The Stop button is gone (the owner, 2026-11-28: "drop it and let unfollow do the job"): unfollowing is how a person
-  // stops a friend sending games, and a stop kept from before no longer keeps anything out.
-  it("is unfollowing, and a stop kept from before keeps nothing out", async () => {
+  // The Stop button and the stops are gone (the owner, 2026-11-28: "drop it and let unfollow do the job"): unfollowing
+  // is how a person stops a friend sending games.
+  it("is unfollowing", async () => {
     const ana = await person();
     const ben = await person();
     await friends(ana.id, ben.id);
     const [one, two] = [await game(), await game()];
-    await db().sendStop.create({ data: { stopperId: ben.id, stoppedId: ana.id, stoppedAt: new Date() } });
     expect(await sends.send(ana.id, one.slug, ben.handle)).toBe("sent");
     expect((await sends.listOf(ben.id, never)).map((row) => row.slug)).toEqual([one.slug]);
 

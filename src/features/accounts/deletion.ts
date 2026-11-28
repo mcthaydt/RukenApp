@@ -189,9 +189,8 @@ async function purgeOne(deps: PurgeDeps, id: string, userId: string, now: Date):
     await tx.gameMark.deleteMany({ where: { OR: [{ userId }, { game: { makerUserId: userId } }] } });
     // Whom the person follows, and who follows them: both sides of a follow name the account.
     await tx.makerFollow.deleteMany({ where: { OR: [{ followerId: userId }, { makerId: userId }] } });
-    // The games the person sent and was sent, and whom they stopped or were stopped by: every row names the account.
+    // The games the person sent and was sent: every row names the account.
     await tx.gameSend.deleteMany({ where: { OR: [{ fromId: userId }, { toId: userId }] } });
-    await tx.sendStop.deleteMany({ where: { OR: [{ stopperId: userId }, { stoppedId: userId }] } });
     // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
     // days of the wait, and goes only here.
     await tx.makerPage.deleteMany({ where: { userId } });
