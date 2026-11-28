@@ -266,3 +266,44 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
   await expectNothingOverlaps(page, paths, "before launch");
   await atLaunch(context);
 });
+
+// The about page's corner button back to the feed is fixed in the window's corner while the page scrolls under it, so
+// a first screen is not enough: it slid over "Put your game on Ruken", "Watch the feed" and the links at the foot on
+// phones (seen 2026-11-28). It steps away while a button or link passes under it, so the page is walked from top to foot.
+test("on the about page, the corner button never sits on another button, wherever the page is scrolled", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const size of SIZES) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await page.goto("/about");
+    await pageHasSettled(page);
+    await wordsHaveSettled(page);
+    const foot = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
+    // Steps shorter than the corner button is tall, so no button can pass under it between two looks.
+    for (let at = 0; at <= foot + 48; at += 48) {
+      await page.evaluate(
+        (y) => {
+          scrollTo(0, y);
+        },
+        Math.min(at, foot),
+      );
+      // The corner button has decided and finished sliding in or out.
+      await page.evaluate(
+        () =>
+          new Promise<void>((done) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                done();
+              });
+            });
+          }),
+      );
+      await page.waitForFunction(() => document.querySelector(".tofeed")?.getAnimations().length === 0);
+      expect
+        .soft(await overlaps(page), `/about at ${size.name}, scrolled to ${String(Math.min(at, foot))}`)
+        .toEqual([]);
+    }
+  }
+});
