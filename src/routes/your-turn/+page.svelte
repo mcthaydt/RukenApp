@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { FeedTop } from "../../features/feed/feed.browser.ts";
+  import { FeedTop, sawYourTurn } from "../../features/feed/feed.browser.ts";
   import { YourTurn } from "../../features/sends/sends.browser.ts";
   import type { PageProps } from "./$types";
 
@@ -11,7 +11,15 @@
 <FeedTop on="your-turn" news={data.signedIn && data.news && !seen} />
 
 {#if data.signedIn}
-  <YourTurn signedIn games={data.games} news={data.news} onseen={() => (seen = true)} />
+  <YourTurn
+    signedIn
+    games={data.games}
+    news={data.news}
+    onseen={() => {
+      seen = true;
+      sawYourTurn();
+    }}
+  />
 {:else}
   <YourTurn signedIn={false} />
 {/if}

@@ -44,12 +44,15 @@
   onMount(() => {
     now = new Date();
     zone = undefined;
-    // The list is on screen, so what is on it is seen: the dot goes. Nobody waits on this.
-    if (signedIn && news) {
-      void fetch("/your-turn/seen", { method: "POST" }).then((answer) => {
-        if (answer.ok) onseen();
-      });
-    }
+  });
+  // The list is on screen, so what is on it is seen: the dot goes. Nobody waits on this. Again when a quiet refresh
+  // brings a game sent since the page on screen was asked for (src/features/feed/kept.svelte.ts).
+  $effect(() => {
+    if (!signedIn || !news) return;
+    void fetch("/your-turn/seen", { method: "POST" }).then((answer) => {
+      if (!answer.ok) return;
+      onseen();
+    });
   });
 
   async function remove(event: SubmitEvent & { currentTarget: HTMLFormElement }, id: string): Promise<void> {

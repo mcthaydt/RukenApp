@@ -1,4 +1,4 @@
-import { feedServices } from "../../features/feed/feed.ts";
+import { feedServices, TAB_DATA } from "../../features/feed/feed.ts";
 import { isKnownAdultCaller } from "../../features/accounts/accounts.ts";
 import { launchServices } from "../../features/launch/launch.ts";
 import { playtestServices } from "../../features/playtest/playtest.ts";
@@ -8,7 +8,9 @@ import type { PageServerLoad } from "./$types";
 // The Followed tab (src/features/feed/Followed.svelte): signed out it asks the person to sign in; signed in it holds the
 // live games of the makers they follow, played like the feed, or says they follow nobody yet, or that none of those
 // makers has a game live.
-export const load: PageServerLoad = async ({ locals, cookies }) => {
+export const load: PageServerLoad = async ({ locals, cookies, depends }) => {
+  // A tab shown from a page asked for ahead asks again quietly once it is in (src/features/feed/kept.svelte.ts).
+  depends(TAB_DATA);
   const caller = locals.caller;
   if (caller.kind !== "user") return { signedIn: false as const };
   const sends = sendsServices();

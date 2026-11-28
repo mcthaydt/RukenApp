@@ -1,4 +1,4 @@
-import { feedServices } from "../features/feed/feed.ts";
+import { feedServices, TAB_DATA } from "../features/feed/feed.ts";
 import { isKnownAdultCaller } from "../features/accounts/accounts.ts";
 import { launchServices } from "../features/launch/launch.ts";
 import { playtestServices } from "../features/playtest/playtest.ts";
@@ -9,7 +9,9 @@ import type { PageServerLoad } from "./$types";
 // game to show is an empty page, and the screen says so. Before launch each clip shows Wishlist where Play goes. A
 // signed-in person whose feed learns from them gets More and Less like this on each clip; a browser that has not said
 // yes to cookies is never signed in here, so it is never offered them.
-export const load: PageServerLoad = async ({ locals, cookies }) => {
+export const load: PageServerLoad = async ({ locals, cookies, depends }) => {
+  // A tab shown from a page asked for ahead asks again quietly once it is in (src/features/feed/kept.svelte.ts).
+  depends(TAB_DATA);
   const feed = feedServices();
   const userId = locals.caller.kind === "user" ? locals.caller.userId : null;
   const caller = locals.caller;

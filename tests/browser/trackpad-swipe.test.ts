@@ -427,3 +427,42 @@ test("a swipe that comes while the last scroll or swipe still coasts moves at on
   await expect.poll(() => wheels(page)).toMatchObject({ sideways: 6 * SWIPE.length, passed: 0 });
   expect(await page.evaluate(() => history.length)).toBeGreaterThan(pages);
 });
+
+// The next tab's page is asked for before the swipe, so a swipe slides at once instead of waiting on the site (the
+// owner, 2026-11-28, after trying #442 on a trackpad: "a bit slow, but it works"). The journey holds every answer for
+// the tab's page back by SLOW_PAGE, waits for the feed to have asked for Followed's, and then swipes: the slide must
+// start well before a page asked for only at the swipe could have come.
+test("a swipe slides at once, though the next tab's page is slow to come", async ({ page }) => {
+  test.setTimeout(120_000);
+  const SLOW_PAGE = 1500;
+  await page.addInitScript(() => {
+    const at = { slide: 0 };
+    (window as unknown as { slideAt: typeof at }).slideAt = at;
+    if ("startViewTransition" in document) {
+      const start = document.startViewTransition.bind(document);
+      document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
+        at.slide = performance.now();
+        return start(update);
+      }) as typeof document.startViewTransition;
+    }
+  });
+  await page.route("**/followed/__data.json*", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, SLOW_PAGE));
+    await route.continue();
+  });
+  const asked = page.waitForResponse((response) => response.url().includes("/followed/__data.json"));
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await pageHasSettled(page);
+  // The feed asks for the tab beside it by itself, once it has come in.
+  await asked;
+  const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+  await pointAt(page, width / 2, height / 2);
+  const swiped = await page.evaluate(() => performance.now());
+  await trackpadSwipe(page, "left");
+  await expect(tab(page, "Followed")).toHaveAttribute("aria-current", "page");
+  const slid = await page.evaluate(() => (window as unknown as { slideAt: { slide: number } }).slideAt.slide);
+  // Where the browser draws slides, the slide starts; elsewhere the page has come in all the same.
+  if (slid > 0)
+    expect(slid - swiped, "how long the slide waited after the swipe, in ms").toBeLessThan(SLOW_PAGE / 2);
+});
