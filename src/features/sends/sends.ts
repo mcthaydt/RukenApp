@@ -8,7 +8,6 @@ export {
   type SendOutcome,
   type Sends,
   type SentGame,
-  type StoppedPerson,
 } from "./service.ts";
 export { sendsServices, setSendLimits } from "./services.ts";
 export { SEND_WORDS, whenWords } from "./words.ts";
