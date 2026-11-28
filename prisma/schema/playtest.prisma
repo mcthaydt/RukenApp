@@ -1,0 +1,58 @@
+// The playtest feature's tables: who may play a game before launch, and the maker's invite link. Read by
+// src/features/playtest/. Prisma cannot express the CHECKs, so they are written by hand at the end of the migration
+// and covered by tests/features/playtest/playtest.pg.test.ts.
+
+/// Where a person and a game stand. `declined` is never shown to the player: they still see their ask.
+enum PlaytestState {
+  asked
+  in
+  declined
+  removed
+}
+
+/// How a person came to the row: their own ask, the maker's invite, or the maker's link.
+enum PlaytestVia {
+  ask
+  invite
+  link
+}
+
+/// One person and one game's playtest. Every change is one guarded update on the state it expects, so two presses
+/// never do it twice. A maker never has a row for their own game (the service refuses it). Deleting either account
+/// deletes the row (deletion.ts). CHECK: Playtester_asked_check.
+model Playtester {
+  id           String        @id @default(cuid(2))
+  gameId       String
+  userId       String
+  state        PlaytestState
+  via          PlaytestVia
+  /// When the person asked; only a new ask sets it, so Asking's order is the first ask.
+  askedAt      DateTime?     @db.Timestamptz
+  /// When the maker said yes or no, invited them, or they came by the link.
+  decidedAt    DateTime?     @db.Timestamptz
+  /// Set when a person the maker said no to takes back their ask: they see "Ask to playtest" again.
+  takenBackAt  DateTime?     @db.Timestamptz
+  /// The time of the Your turn row; set once, by the first yes or invite.
+  noticeAt     DateTime?     @db.Timestamptz
+  /// When the person first opened Your turn with the row on it; what the tab's dot counts.
+  noticeSeenAt DateTime?     @db.Timestamptz
+  /// Set when the row leaves Your turn (the person's own Remove, or the maker's).
+  noticeGoneAt DateTime?     @db.Timestamptz
+
+  // Restrict: the account purge removes these rows first, never by a cascade.
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([gameId, userId])
+  @@index([userId])
+}
+
+/// A game's invite link. One per game; a new link replaces the row, and the old token then matches nothing. The token
+/// itself is kept so the maker's sheet shows the same link each time it opens. CHECK: PlaytestLink_token_check.
+model PlaytestLink {
+  gameId String   @id
+  token  String   @unique
+  madeAt DateTime @db.Timestamptz
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+}
