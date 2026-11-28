@@ -1,0 +1,24 @@
+diff --git a/tests/browser/controls-overlap.test.ts b/tests/browser/controls-overlap.test.ts
+index 1cc89fc..f33b314 100644
+--- a/tests/browser/controls-overlap.test.ts
++++ b/tests/browser/controls-overlap.test.ts
+@@ -346,3 +346,19 @@ test("on the about page, the corner button never sits on another button, whereve
+     }
+   }
+ });
++
++// AUDIT PROBE (not part of the PR): the Playtest badge on a feed clip, for an asker and for someone signed out.
++test("AUDIT probe: the badge on the feed, an asker and signed out", async ({ browser, page, context }) => {
++  test.setTimeout(400_000);
++  const scene = await playtestScene(browser);
++  try {
++    await expectNothingOverlaps(scene.asker.page, ["/"], "asker, badge on the feed", scene.slug);
++    await expect(scene.asker.page.locator(`section[data-slug="${scene.slug}"] .playtestbadge`).first()).toBeVisible();
++    await beforeLaunch(context);
++    await expectNothingOverlaps(page, ["/", `/g/${scene.slug}`], "signed out, badge", scene.slug);
++    await expect(page.locator(".playtestbadge").first()).toBeVisible();
++    await atLaunch(context);
++  } finally {
++    await scene.close();
++  }
++});
