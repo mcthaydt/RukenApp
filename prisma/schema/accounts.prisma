@@ -101,6 +101,7 @@ model User {
   feedTastes      FeedTaste[]     @relation("FeedTasteOwner")
   feedTastesOfMe  FeedTaste[]     @relation("FeedTasteMaker")
   goodPicksAsked  GoodPickAsked[]
+  parentAsks      ParentYes[]
 
   // The money feature's ledger lines name a maker; they are declared in money.prisma.
   journalLines JournalLine[]

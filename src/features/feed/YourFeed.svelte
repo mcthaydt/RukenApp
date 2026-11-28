@@ -2,15 +2,16 @@
   Settings › Your feed (learned feed spec 6.2): the Learn from what I do switch; a line built from the person's chips;
   what they want to see more of and less of, as chips with × to remove, suggestions with + to add, and Add for a sheet of
   moods, genres and makers; and Start over, which asks once. An under-18 sees only that their feed doesn't learn until
-  a parent says yes. Every press is a form, so it works with no script; with script it stays on the page.
+  a parent says yes, with Ask a parent, or the ask waiting with Cancel the ask. Every press is a form, so it works with no script; with script it stays on the page.
 -->
 <script lang="ts">
   import { tick } from "svelte";
   import { enhance, type SubmitFunction } from "$app/forms";
   import Icon from "../../lib/icon.svelte";
+  import type { AskState } from "./parent-yes.ts";
   import type { Choice, YourFeed } from "./taste.ts";
 
-  let { feed, problem }: { feed: YourFeed; problem: string | null } = $props();
+  let { feed, asked, problem }: { feed: YourFeed; asked: AskState; problem: string | null } = $props();
 
   let addSheet = $state<HTMLDialogElement>();
   let addingTo = $state<"more" | "less">("more");
@@ -146,8 +147,14 @@
     <p class="problem" role="alert">{problem}</p>
   {/if}
 
-  {#if feed.learning === "locked"}
+  {#if feed.learning === "locked" && asked === "waiting"}
+    <p role="status">We texted your parent. Your feed starts learning when they say yes.</p>
+    <form method="POST" action="?/cancelAsk" use:enhance={send("cancelAsk")}>
+      <button class="safe" aria-busy={busy("cancelAsk")}>Cancel the ask</button>
+    </form>
+  {:else if feed.learning === "locked"}
     <p>Your feed doesn't learn from what you do until a parent says yes.</p>
+    <p><a class="button" href="/settings/feed/parent">Ask a parent</a></p>
   {:else}
     <!-- It posts the state it wants, so a second press never undoes the first. -->
     <form class="learn" method="POST" action="?/learning" use:enhance={send("learning")}>

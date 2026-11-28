@@ -183,6 +183,8 @@ async function purgeOne(deps: PurgeDeps, id: string, userId: string, now: Date):
       where: { OR: [{ userId }, { makerUserId: userId }, { game: { makerUserId: userId } }] },
     });
     await tx.goodPickAsked.deleteMany({ where: { userId } });
+    // A teen's asks for a parent's yes, and any yes, are theirs.
+    await tx.parentYes.deleteMany({ where: { teenUserId: userId } });
     // What the person liked, saved and reposted is theirs, and every mark on their own games goes with the games.
     await tx.gameMark.deleteMany({ where: { OR: [{ userId }, { game: { makerUserId: userId } }] } });
     // Whom the person follows, and who follows them: both sides of a follow name the account.

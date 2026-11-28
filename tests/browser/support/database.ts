@@ -632,6 +632,25 @@ export async function makeThemUnder18(number: string): Promise<void> {
   });
 }
 
+/** The person's asks for a parent's yes, oldest first: the answer, and whether it was cancelled, ended or turned off. */
+export async function parentAsksOf(number: string): Promise<{ answer: string | null; revoked: boolean }[]> {
+  const rows = await db().parentYes.findMany({
+    where: { teenUserId: await userIdOf(number) },
+    orderBy: { askedAt: "asc" },
+    select: { answer: true, revokedAt: true },
+  });
+  return rows.map((row) => ({ answer: row.answer, revoked: row.revokedAt !== null }));
+}
+
+/** Moves the person's asks for a parent's yes this many days into the past, as if nobody had answered for that long. */
+export async function ageParentAsks(number: string, days: number): Promise<void> {
+  const teenUserId = await userIdOf(number);
+  await db().parentYes.updateMany({
+    where: { teenUserId },
+    data: { askedAt: new Date(Date.now() - days * 86_400_000) },
+  });
+}
+
 /** Has the feed ask this person "Good pick?" about a game, as it does when the private order picks one. */
 export async function askGoodPick(number: string, slug: string): Promise<void> {
   const user = await userIdOf(number);

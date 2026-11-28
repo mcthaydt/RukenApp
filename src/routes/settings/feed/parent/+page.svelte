@@ -1,0 +1,44 @@
+<!--
+  Ask a parent: the teen's first name and a parent's phone number, and one blue button that texts the parent. A plain
+  form, so it works before any script loads.
+-->
+<script lang="ts">
+  import { enhance } from "$app/forms";
+  import Icon from "../../../../lib/icon.svelte";
+  import PhoneFields from "../../../../lib/phone-fields.svelte";
+  import type { PageProps } from "./$types";
+
+  let { data, form }: PageProps = $props();
+  let sending = $state(false);
+</script>
+
+<main class="card">
+  <h1>Ask a parent</h1>
+  <p>We'll text your parent a link. When they say yes, your feed learns what you like.</p>
+  <form
+    method="POST"
+    use:enhance={() => {
+      sending = true;
+      return async ({ update }) => {
+        await update({ reset: false });
+        sending = false;
+      };
+    }}
+  >
+    <p>
+      <label>
+        Your first name
+        <input type="text" name="name" autocomplete="given-name" maxlength="30" value={form?.name} />
+      </label>
+    </p>
+    <p class="note">Your parent's phone number:</p>
+    <PhoneFields countries={data.countries} country={form?.country} phone={form?.phone} />
+    {#if form?.problem}
+      <p class="problem" role="alert">{form.problem}</p>
+    {/if}
+    <button disabled={sending} aria-busy={sending}>Text my parent</button>
+  </form>
+  <p>
+    <a class="button safe back" href="/settings/feed" aria-label="Back to your feed"><Icon name="back" /></a>
+  </p>
+</main>

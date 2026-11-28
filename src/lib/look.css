@@ -750,6 +750,11 @@ textarea[aria-invalid="true"] {
   min-width: 0;
 }
 
+/* Two answers side by side (a parent's Yes and No), each its own form: the buttons share the row evenly. */
+.row > form > button {
+  width: 100%;
+}
+
 /* A button, or a link that looks like one. Flex, because an inline link ignores a height and a transform:
    without it a link-button would be neither 48px tall nor give when pressed. The main forward action is Blue
    with white words, on felt and on a card alike. */

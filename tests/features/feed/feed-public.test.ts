@@ -114,10 +114,10 @@ describe("who is asking, from the browser and the account", () => {
   const ON: FeedPublic = { learned: true, teenPersonal: true, windowDays: 7 };
   const reads: string[] = [];
   const learning =
-    (answer: "on" | "off" | "locked") =>
-    (userId: string): Promise<"on" | "off" | "locked"> => {
+    (answer: "on" | "off" | "locked", adult = true) =>
+    (userId: string): Promise<{ learning: "on" | "off" | "locked"; adult: boolean }> => {
       reads.push(userId);
-      return Promise.resolve(answer);
+      return Promise.resolve({ learning: answer, adult });
     };
 
   it("an adult with Learn from what I do on, in a browser that said yes to cookies, is the full viewer", async () => {
@@ -129,8 +129,25 @@ describe("who is asking, from the browser and the account", () => {
 
   it("Learn from what I do off, or an account locked off (under 18, or of unknown age), is the crowd", async () => {
     expect(await askingOf(ON, { userId: "user-1", consented: true }, learning("off"))).toEqual(CROWD);
-    // A parent's yes is not built yet, so a teen is locked off and is the crowd even while teenPersonal is on.
-    expect(await askingOf(ON, { userId: "user-1", consented: true }, learning("locked"))).toEqual(CROWD);
+    expect(await askingOf(ON, { userId: "user-1", consented: true }, learning("locked", false))).toEqual(
+      CROWD,
+    );
+  });
+
+  it("a teen with a parent's yes is the full viewer only while teenPersonal is on", async () => {
+    expect(await askingOf(ON, { userId: "teen-1", consented: true }, learning("on", false))).toEqual({
+      kind: "full",
+      id: "teen-1",
+    });
+    expect(
+      await askingOf(
+        { ...ON, teenPersonal: false },
+        { userId: "teen-1", consented: true },
+        learning("on", false),
+      ),
+    ).toEqual(CROWD);
+    // Learn from what I do off is the crowd for a teen with a yes too.
+    expect(await askingOf(ON, { userId: "teen-1", consented: true }, learning("off", false))).toEqual(CROWD);
   });
 
   it("a browser without a yes to cookies is the crowd even signed in, and the account is never read", async () => {
@@ -144,7 +161,8 @@ describe("who is asking, from the browser and the account", () => {
   });
 
   it("an account that cannot be read is the crowd", async () => {
-    const broken = (): Promise<"on"> => Promise.reject(new Error("no database"));
+    const broken = (): Promise<{ learning: "on"; adult: boolean }> =>
+      Promise.reject(new Error("no database"));
     expect(await askingOf(ON, { userId: "user-1", consented: true }, broken)).toEqual(CROWD);
   });
 });

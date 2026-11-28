@@ -2,13 +2,14 @@ import { systemClock } from "../../lib/clock.ts";
 import { prisma } from "../../lib/server/db.ts";
 import { optionalEnv } from "../../lib/server/env.ts";
 import type { Cookies } from "@sveltejs/kit";
-import type { Caller } from "../accounts/accounts.ts";
+import { authServices, type Caller } from "../accounts/accounts.ts";
 import { hasConsent } from "../consent/consent.ts";
 import { gamesServices } from "../games/games.ts";
 import { pagesServices } from "../pages/pages.ts";
 import { playServices } from "../play/play.ts";
 import { askingOf, readFeedPublic, type Asking, type FeedPublic } from "./feed-public.ts";
 import { createMarks, type Marks } from "./marks.ts";
+import { createParentYes, type ParentYes } from "./parent-yes.ts";
 import type { Ranker } from "./ranker.ts";
 import { createSearch, type Search } from "./search.ts";
 import { createFeedService, type FeedService } from "./service.ts";
@@ -23,6 +24,8 @@ export interface FeedServices {
   taste: Taste;
   /** Like, Save and Repost. */
   marks: Marks;
+  /** A teen's ask for a parent's yes, and the parent's answer. */
+  parentYes: ParentYes;
   /** The live games a person saved (or reposted), the latest first, as Saved and Your reposts list them. */
   listOf(userId: string, kind: "save" | "repost"): Promise<MarkedGame[]>;
   /** Search from the feed's top bar: live games and their makers. */
@@ -66,6 +69,13 @@ export function feedServices(): FeedServices {
   shared = {
     taste,
     marks,
+    parentYes: createParentYes({
+      db: prisma(),
+      clock: systemClock,
+      // Asked for only when a teen asks, so the feed never builds the sign-in services just to show a clip.
+      texting: () => authServices(),
+      teenPersonal: () => publicSettings().teenPersonal,
+    }),
     async listOf(userId, kind) {
       const [ids, live] = await Promise.all([
         marks.gameIdsOf(userId, kind),
@@ -103,7 +113,7 @@ export function feedServices(): FeedServices {
       askingOf(
         publicSettings(),
         { userId: caller.kind === "user" ? caller.userId : null, consented: hasConsent(cookies) },
-        (userId) => taste.learningOf(userId),
+        (userId) => taste.learnerOf(userId),
       ),
   };
   return shared;
