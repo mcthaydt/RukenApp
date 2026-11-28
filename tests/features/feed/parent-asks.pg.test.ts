@@ -152,25 +152,29 @@ describe("a teen's ask", () => {
     expect(await parents.stateOf(id)).toBe("none");
   });
 
-  it("refuses the teen's own number, and any number on an account that is not a known adult's, texting nothing", async () => {
+  it("refuses the teen's own number, and any number on an account that is not a known adult's, the same way each time", async () => {
     const id = await teen();
     await db().user.update({ where: { id }, data: { phoneNumber: "+13125550101" } });
-    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0101" }, ORIGIN)).toBe("own-number");
+    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0101" }, ORIGIN)).toBe("refused-number");
     const other = await teen();
     await db().user.update({ where: { id: other }, data: { phoneNumber: "+13125550102" } });
-    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0102" }, ORIGIN)).toBe("teen-number");
+    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0102" }, ORIGIN)).toBe("refused-number");
     const unknownAge = await createUser(db());
     await db().user.update({ where: { id: unknownAge }, data: { phoneNumber: "+13125550103" } });
-    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0103" }, ORIGIN)).toBe("teen-number");
-    expect(await db().parentAsk.count({ where: { teenUserId: id } })).toBe(0);
+    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0103" }, ORIGIN)).toBe("refused-number");
     expect(texts).toHaveLength(0);
+    // Each refused try counts toward the three a day, so numbers cannot be tried without end; none is left open.
+    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0104" }, ORIGIN)).toBe("too-many");
+    expect(await parents.stateOf(id)).toBe("none");
+    expect(await db().parentAsk.count({ where: { teenUserId: id, revokedAt: null } })).toBe(0);
     // A parent with their own adult account is a parent.
     const adult = await createUser(db());
     await db().user.update({
       where: { id: adult },
       data: { phoneNumber: "+13125550104", adultOn: new Date("2000-01-01T00:00:00Z") },
     });
-    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0104" }, ORIGIN)).toBe("texted");
+    expect(await parents.ask(await teen(), { ...PARENT, phone: "312 555 0104" }, ORIGIN)).toBe("texted");
+    expect(texts).toHaveLength(1);
   });
 
   it("texts one number only so often a day, from every teen together", async () => {
@@ -178,11 +182,15 @@ describe("a teen's ask", () => {
     const busy = { ...PARENT, phone: "312 555 0177" };
     for (let sent = 0; sent < 2; sent++) expect(await parents.ask(await teen(), busy, ORIGIN)).toBe("texted");
     const third = await teen();
-    expect(await parents.ask(third, busy, ORIGIN)).toBe("number-busy");
-    expect(await db().parentAsk.count({ where: { teenUserId: third } })).toBe(0);
+    expect(await parents.ask(third, busy, ORIGIN)).toBe("refused-number");
+    expect(await parents.stateOf(third)).toBe("none");
     expect(texts).toHaveLength(2);
     clock.advance(24 * 60 * 60 * 1000 + 1);
     expect(await parents.ask(third, busy, ORIGIN)).toBe("texted");
+  });
+
+  it("holds to three texts a day to one number where its secret is missing", () => {
+    expect(STAND_IN_PARENT_ASK_LIMITS.perNumberADay).toBeLessThanOrEqual(3);
   });
 
   it("reads the per-number limit from its secret, and anything out of shape is the stand-in", () => {
@@ -255,7 +263,7 @@ describe("the parent's answer", () => {
     expect(await parents.answer(token, "no")).toEqual({ kind: "no" });
     expect(await parents.answer(token, "yes")).toEqual({ kind: "no" });
     expect(await taste.learningOf(id)).toBe("locked");
-    expect(await parents.ask(id, PARENT, ORIGIN)).toBe("said-no");
+    expect(await parents.ask(id, PARENT, ORIGIN)).toBe("refused-number");
     expect(await parents.ask(id, { ...PARENT, phone: "312 555 0198" }, ORIGIN)).toBe("texted");
     expect(texts).toHaveLength(2);
   });

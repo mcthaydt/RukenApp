@@ -16,13 +16,13 @@ export const TEXTS_A_DAY = 3;
 /**
  * How many asks one phone number may be texted in a day, from every teen together. The mechanism is public; the
  * deploy's number is not (the owner, 2026-11-22: spam numbers go private). The deploy sets it in the Worker secret
- * PARENT_ASK_LIMITS; this stand-in, deliberately loose, is for dev, the journeys and any moment the secret is missing.
+ * PARENT_ASK_LIMITS; this stand-in, as strict as the limit on one teen, is what holds wherever the secret is missing.
  */
 export interface ParentAskLimits {
   perNumberADay: number;
 }
 
-export const STAND_IN_PARENT_ASK_LIMITS: ParentAskLimits = { perNumberADay: 10 };
+export const STAND_IN_PARENT_ASK_LIMITS: ParentAskLimits = { perNumberADay: 3 };
 
 /** Reads PARENT_ASK_LIMITS; anything missing or out of shape is the stand-in, and one line is logged without values. */
 export function readParentAskLimits(raw: string | undefined, log: (line: string) => void): ParentAskLimits {
@@ -52,10 +52,7 @@ export type AskOutcome =
   | "texted"
   | "bad-name"
   | "bad-number"
-  | "own-number"
-  | "teen-number"
-  | "said-no"
-  | "number-busy"
+  | "refused-number"
   | "waiting"
   | "has-yes"
   | "adult"
@@ -162,23 +159,29 @@ export function createParentAsks(deps: ParentAsksDeps) {
           where: { teenUserId, askedAt: { gt: new Date(clock.epochMs() - DAY_MS) } },
         });
         if (today >= TEXTS_A_DAY) return "too-many" as const;
+        const phoneHash = hashNumber(number, deps.texting().secret);
         // A parent's number, never a teen's: not the teen's own, and not one on any account that is not a known adult's.
         const holder = await tx.user.findUnique({
           where: { phoneNumber: number },
           select: { id: true, adultOn: true },
         });
-        if (holder?.id === teenUserId) return "own-number" as const;
-        if (holder !== null && !isAdultOn(holder.adultOn, clock)) return "teen-number" as const;
-        const phoneHash = hashNumber(number, deps.texting().secret);
-        // A parent who said no is not texted again by this teen.
-        if ((await tx.parentAsk.count({ where: { teenUserId, phoneHash, answer: "no" } })) > 0)
-          return "said-no" as const;
-        // One number is texted only so often a day, from every teen together, so nobody can flood a stranger's phone.
-        const toNumber = await tx.parentAsk.count({
-          where: { phoneHash, askedAt: { gt: new Date(clock.epochMs() - DAY_MS) } },
-        });
-        if (toNumber >= (deps.limits?.() ?? STAND_IN_PARENT_ASK_LIMITS).perNumberADay)
-          return "number-busy" as const;
+        const refused =
+          (holder !== null && (holder.id === teenUserId || !isAdultOn(holder.adultOn, clock))) ||
+          // A parent who said no is not texted again by this teen.
+          (await tx.parentAsk.count({ where: { teenUserId, phoneHash, answer: "no" } })) > 0 ||
+          // One number is texted only so often a day, from every teen together, so nobody can flood a stranger's phone.
+          (await tx.parentAsk.count({
+            where: { phoneHash, askedAt: { gt: new Date(clock.epochMs() - DAY_MS) } },
+          })) >= (deps.limits?.() ?? STAND_IN_PARENT_ASK_LIMITS).perNumberADay;
+        if (refused) {
+          // Every refusal reads the same, so it never tells a teen whose number it is, and it counts toward the three
+          // a day like a text, so nobody can try numbers without end. It is kept already ended, and nothing is sent.
+          await tx.parentAsk.create({
+            data: { teenUserId, phoneHash, tokenHash: hashOf(token), askedAt: now(), revokedAt: now() },
+            select: { id: true },
+          });
+          return "refused-number" as const;
+        }
         // An ask that ran out of days is ended for good, so a teen only ever has one ask open.
         await tx.parentAsk.updateMany({
           where: { teenUserId, answer: null, revokedAt: null },
