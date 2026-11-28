@@ -1,7 +1,16 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
-import { givePage } from "./support/database.ts";
-import { addGame } from "./support/game.ts";
+import {
+  fillAnswers,
+  followById,
+  givePage,
+  markById,
+  personWithPage,
+  sendById,
+  userIdOf,
+} from "./support/database.ts";
+import { consented } from "./support/consent.ts";
+import { addDraft, addGame } from "./support/game.ts";
 import { asInstalled } from "./support/installed.ts";
 import { atLaunch, beforeLaunch } from "./support/launch.ts";
 import { wordsHaveSettled } from "./support/look.ts";
@@ -17,7 +26,8 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // clip) have no one colour behind them and are left out; the feed's words over clips carry their own shadow and glass
 // for that (the owner, 2026-11-27), and words on glass are glass.test.ts's to check (faint over a white clip). A
 // disabled button is left out too, as WCAG leaves it out. Pages that scroll are checked from top to foot. Each screen
-// is read signed out, as a player with nothing of their own and as a maker with a live game, before launch and after.
+// is read signed out, as a player with a save, a repost and a game sent by a friend, and as a maker with a live game,
+// a draft and a page, before launch and after.
 
 const SIZES = [
   { name: "320 by 568", width: 320, height: 568 },
@@ -29,14 +39,48 @@ const SIZES = [
 
 let live: Awaited<ReturnType<typeof addGame>>;
 let makersPage: string;
+let makersLink: string;
+let draft: string;
+let newMaker: { number: string; password: string; draft: string };
+let friend: { id: string; handle: string };
 
 test.beforeAll(async ({ browser, request }) => {
   test.setTimeout(240_000);
   await forgetRateLimits();
   // A live game whose maker has a page: it shows in Search, in the feed, on its own page and in the maker's Your games.
   live = await addGame(browser, request);
-  makersPage = (await givePage(live.maker, { name: "Night Owl Games", oneLine: "I make small, hard games." }))
-    .handle;
+  const given = await givePage(live.maker, {
+    name: "Night Owl Games",
+    oneLine: "I make small, hard games.",
+    links: [{ title: "My shop", url: "https://example.com/shop" }],
+  });
+  makersPage = given.handle;
+  makersLink = given.linkIds[0] ?? "";
+  // A second game of the maker's, still a draft, for the screens a game has before it is sent.
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  try {
+    const page = await context.newPage();
+    await signInAs(page, live.maker.number, live.maker.password);
+    await pageHasSettled(page);
+    draft = (await addDraft(page)).slug;
+    // Every question answered, so its agreement and Check and send open, not the next question.
+    await fillAnswers(draft, { line: true, files: true, videos: true, age: "age_12" });
+  } finally {
+    await context.close();
+  }
+  // A maker with a finished first game who has not agreed yet: the only person who sees the maker agreement's step.
+  const context2 = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  try {
+    const page = await context2.newPage();
+    const account = await signUp(page);
+    const first = (await addDraft(page)).slug;
+    await fillAnswers(first, { line: true, files: true, videos: true, age: "age_12" });
+    newMaker = { ...account, draft: first };
+  } finally {
+    await context2.close();
+  }
+  // A friend of every player here, who sends them the live game, so Your turn has something in it.
+  friend = await personWithPage("Ivy Inline");
 });
 test.beforeEach(async ({ page }) => {
   // The sizes are set here, so one engine is enough: Safari's, which the owner's iPad and iPhone draw with.
@@ -101,9 +145,22 @@ const signedIn = () => [
   "/settings/feed",
   "/no-such-page-here",
 ];
-/** A maker's own screens besides: their game's page in Your games, and their page's editor. A game's play screen is
- * its frame, with no words of Ruken's, so it is left out. */
-const makersOwn = () => [`/make/${live.slug}`, "/make/page", "/make/page/links"];
+/** A maker's own screens besides: their live game in Your games and each of its questions, a draft's screens, and
+ * every room of their page's editor. A game's play screen is its frame, with no words of Ruken's, so it is left out. */
+const makersOwn = () => [
+  `/make/${live.slug}`,
+  ...["name", "line", "files", "upright", "wide", "age", "marks", "websites", "take-off"].map(
+    (question) => `/make/${live.slug}/${question}`,
+  ),
+  // The agreement is read by the new maker below: this maker has agreed already, so it moves on to Check and send.
+  ...["check", "marks", "throw-away"].map((screen) => `/make/${draft}/${screen}`),
+  "/make/page",
+  ...["address", "name", "line", "colours", "photo"].map((room) => `/make/page/${room}`),
+  "/make/page/links",
+  "/make/page/links/add",
+  `/make/page/links/${makersLink}`,
+  "/make/page/take-down",
+];
 
 /** Each line of words on screen that is too faint against what is behind it, with its numbers, and how many were read. */
 function faintWords(page: Page): Promise<{ faint: string[]; read: number }> {
@@ -236,6 +293,9 @@ async function expectEveryWordReadable(page: Page, paths: readonly string[], whe
   for (const path of paths) {
     await page.goto(path);
     await pageHasSettled(page);
+    // The screen itself, not one it sent the person on to, which would leave this one unread.
+    const opened = new URL(page.url());
+    expect.soft(`${opened.pathname}${opened.search}`, `${path}, ${when}: opened where asked`).toBe(path);
     await wordsHaveSettled(page);
     const faint = new Set<string>();
     let read = 0;
@@ -287,12 +347,18 @@ for (const size of SIZES) {
       await beforeAndAfterLaunch(page, context, signedOut(), "signed out");
     });
 
-    test("signed in as a player with nothing of their own, every word is easy to read, before launch and after", async ({
+    test("signed in as a player with a save, a repost and a sent game, every word is easy to read, before launch and after", async ({
       page,
       context,
     }) => {
       test.setTimeout(360_000);
-      await signUp(page);
+      // Saved, Reposts and Your turn each with a game in them; the maker below sees them empty.
+      const player = await userIdOf((await signUp(page)).number);
+      await markById(player, live.slug, "save");
+      await markById(player, live.slug, "repost");
+      await followById(player, friend.id);
+      await followById(friend.id, player);
+      await sendById(friend.id, player, live.slug);
       await beforeAndAfterLaunch(page, context, signedIn(), "a player");
     });
 
@@ -304,6 +370,16 @@ for (const size of SIZES) {
       await signInAs(page, live.maker.number, live.maker.password);
       await pageHasSettled(page);
       await beforeAndAfterLaunch(page, context, [...signedIn(), ...makersOwn()], "a maker");
+    });
+
+    test("as a new maker about to send their first game, the agreement is easy to read, before launch and after", async ({
+      page,
+      context,
+    }) => {
+      test.setTimeout(120_000);
+      await signInAs(page, newMaker.number, newMaker.password);
+      await pageHasSettled(page);
+      await beforeAndAfterLaunch(page, context, [`/make/${newMaker.draft}/agreement`], "a new maker");
     });
   });
 }

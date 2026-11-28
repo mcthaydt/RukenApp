@@ -739,6 +739,24 @@ export async function likeById(userId: string, slug: string, on: boolean): Promi
   }
 }
 
+/** A person (by id) saves or reposts a game (by its address), as pressing Save or Repost does. */
+export async function markById(userId: string, slug: string, kind: "save" | "repost"): Promise<void> {
+  const { id: gameId } = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true } });
+  await db().gameMark.createMany({
+    data: [{ userId, gameId, kind, madeAt: new Date() }],
+    skipDuplicates: true,
+  });
+}
+
+/** One friend (by id) sends another a game (by its address), as Send in the share sheet does. */
+export async function sendById(fromId: string, toId: string, slug: string): Promise<void> {
+  const { id: gameId } = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true } });
+  await db().gameSend.createMany({
+    data: [{ fromId, toId, gameId, sentAt: new Date() }],
+    skipDuplicates: true,
+  });
+}
+
 /** One person (by id) stops following another. */
 export async function unfollowById(followerId: string, makerId: string): Promise<void> {
   await db().makerFollow.deleteMany({ where: { followerId, makerId } });
