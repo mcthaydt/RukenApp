@@ -128,7 +128,9 @@ test.describe("before a yes to cookies", () => {
     if (tap) await notNow.tap();
     else await notNow.click();
     await expect(page.locator("aside.consent")).toHaveCount(0);
-    const like = page.locator("section[data-current='true']").getByRole("button", { name: "Like", exact: true });
+    const like = page
+      .locator("section[data-current='true']")
+      .getByRole("button", { name: "Like", exact: true });
     if (tap) await like.tap();
     else await like.click();
     await expect(page.locator("aside.consent")).toContainText("To like this game");
