@@ -21,16 +21,6 @@ export const SEND_WORDS = {
   signedOut: "Sign in to see games friends send you.",
   signIn: "Sign in",
   remove: (game: string) => `Remove ${game} from Your turn`,
-  stop: (name: string) => `Stop games from ${name}`,
-  stopAsk: (name: string) => `Stop games from ${name}? They won't be told.`,
-  stopYes: "Stop",
-  stopNo: "Keep",
-  /** The friends whose games are kept out of Your turn ("People you stopped" before; the owner, 2026-11-28, asked what it was). */
-  stoppedLink: "Friends who can't send you games",
-  stoppedTitle: "Friends who can't send you games",
-  stoppedEmpty: "Every friend can send you games.",
-  undo: "Undo",
-  undoLabel: (name: string) => `Let games from ${name} through again`,
   today: "Today",
   yesterday: "Yesterday",
   /** A sender whose page has gone since they sent. */

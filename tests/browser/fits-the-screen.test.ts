@@ -138,7 +138,6 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
     "/me/reposts",
     "/settings/feed",
     "/your-turn",
-    "/your-turn/stopped",
   ]) {
     await opened(page, path);
     expect(await overflow(page), path).toEqual({ page: 0, view: 0 });

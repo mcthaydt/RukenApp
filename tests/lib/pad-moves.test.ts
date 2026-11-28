@@ -45,6 +45,22 @@ describe("nextBox", () => {
     expect(nextBox(big, [small], "left")).toBe(-1);
   });
 
+  // A game's page as measured on a computer (#453): the clip's full-size button is a tall box beside the column of Play,
+  // Join, Share and the two clips. Its middle lies further down than Play's, but it is off to the side, so down from
+  // Play goes to Join, down from Join to Share, and up from the upright clip to Share, never across to the clip.
+  it("does not take a tall box beside the column for one that lies that way", () => {
+    const clip = b(12, 72, 634, 665);
+    const play = b(666, 32, 1248, 80);
+    const join = b(666, 152, 1248, 200);
+    const share = b(666, 272, 769, 320);
+    const upright = b(666, 545, 722, 645);
+    const screen = [clip, play, join, share, upright];
+    expect(screen[nextBox(play, screen, "down")]).toBe(join);
+    expect(screen[nextBox(join, screen, "down")]).toBe(share);
+    expect(screen[nextBox(upright, screen, "up")]).toBe(share);
+    expect(screen[nextBox(join, screen, "left")]).toBe(clip);
+  });
+
   // Check and send as measured in the browser (#409, review 1, R1): the Change buttons sit in rows a few pixels apart and
   // a few pixels off each other's column, and the name's button moves with the length of the game's name. As the
   // journey does, the walk starts where a first press lands (Send for review) and goes on only from what it reached.
