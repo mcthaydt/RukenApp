@@ -29,7 +29,8 @@
   import type { Snippet } from "svelte";
   import { beforeNavigate, goto, preloadData } from "$app/navigation";
   import { onMount } from "svelte";
-  import { arrival, askedAhead, kept, quietRefresh, settingOff } from "./kept.svelte.ts";
+  import { arrival, askedAhead, kept, newsShown, quietRefresh, settingOff } from "./kept.svelte.ts";
+  import { browser } from "$app/environment";
   import Icon from "../../lib/icon.svelte";
   import {
     LB,
@@ -55,6 +56,9 @@
     /** The speaker, where the screen has clips to play; its place stays empty otherwise, so the pill stays centred. */
     sound?: Snippet | undefined;
   } = $props();
+
+  // The Your turn dot, unless the list was seen since this tab's page was asked for (kept.svelte.ts).
+  const dot = $derived(browser ? newsShown(news, location.pathname) : news);
 
   /** Goes to the tab `step` places along, if there is one, unless a sheet is open over the feed. */
   function stepTab(step: 1 | -1): void {
@@ -232,8 +236,8 @@
       <a
         href={tab.href}
         aria-current={on === tab.key ? "page" : undefined}
-        aria-label={tab.key === "your-turn" && news ? "Your turn, new games" : undefined}
-        >{tab.name}{#if tab.key === "your-turn" && news}<span class="news" aria-hidden="true"></span>{/if}</a
+        aria-label={tab.key === "your-turn" && dot ? "Your turn, new games" : undefined}
+        >{tab.name}{#if tab.key === "your-turn" && dot}<span class="news" aria-hidden="true"></span>{/if}</a
       >
     {/each}
   </nav>

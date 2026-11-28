@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { givePage, makeFriends, sendInDatabase } from "./support/database.ts";
+import { givePage, makeFriends, sendInDatabase, sentTo } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { asInstalled } from "./support/installed.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -161,4 +161,32 @@ test("a tab shown from a page asked for ahead takes in what is new without movin
   });
   await expect(onScreen).toHaveAttribute("data-slug", game.slug);
   expect(await onScreen.evaluate((section) => (section as HTMLElement & { seen?: true }).seen)).toBe(true);
+});
+
+test("a game sent since Your turn's page was asked for is marked seen once it comes in, and its dot goes", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const me = await signUp(page);
+  await makeFriends(me, game.maker);
+  // Your turn's page is asked for ahead from Followed, with nothing sent yet; then a friend sends a game.
+  const ahead = page.waitForResponse((answer) => answer.url().includes("/your-turn/__data.json"));
+  await page.goto("/followed");
+  await pageHasSettled(page);
+  await ahead;
+  await page.waitForTimeout(1500);
+  await sendInDatabase(game.maker, me, game.slug);
+  await tabOf(page, /^Your turn/).click();
+  await expect(page).toHaveURL("/your-turn");
+  // The quiet refresh brings the game in, and the list on screen marks it seen.
+  await expect(page.locator("main.yourturn li").filter({ hasText: game.name })).toBeVisible();
+  await expect.poll(() => sentTo(me.number)).toEqual([{ game: game.slug, seen: true }]);
+  await expect(tabOf(page, "Your turn, new games")).toHaveCount(0);
+  // Back on the other tabs, from their pages asked for ahead or not, no dot.
+  await tabOf(page, "Followed").click();
+  await expect(tabOf(page, "Followed")).toHaveAttribute("aria-current", "page");
+  await expect(tabOf(page, "Your turn, new games")).toHaveCount(0);
+  await tabOf(page, "Fresh").click();
+  await expect(tabOf(page, "Fresh")).toHaveAttribute("aria-current", "page");
+  await expect(tabOf(page, "Your turn, new games")).toHaveCount(0);
 });

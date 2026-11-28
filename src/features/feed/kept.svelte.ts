@@ -35,6 +35,7 @@ export const kept: {
   stale: number;
   marks: Record<string, Mark | undefined>;
   follows: Record<string, Follow | undefined>;
+  seenAt: number;
 } = $state({
   /** While a quiet refresh is loading: the tab's new page is merged into the one on screen, not started again. */
   quiet: false,
@@ -44,6 +45,8 @@ export const kept: {
   marks: {},
   /** The person's own presses on a maker's plus, by maker's address, with when each was made. */
   follows: {},
+  /** When the person last saw the Your turn list (it marks it seen), so no tab's page from before shows its dot. */
+  seenAt: 0,
 });
 
 /** When each tab's page was last asked for ahead, by its address. Not shown on any screen, so a plain map. */
@@ -95,6 +98,8 @@ export async function quietRefresh(): Promise<void> {
   kept.quiet = true;
   try {
     await invalidate(TAB_DATA);
+    // What is on screen now says how things were when the refresh asked.
+    if (landed !== null) landed.since = refreshAsked;
   } finally {
     kept.quiet = false;
   }
@@ -123,4 +128,16 @@ export async function followsChanged(handle: string, on: boolean): Promise<void>
   await invalidate(NOTHING);
   askedAt.clear();
   kept.stale += 1;
+}
+
+/** The Your turn list was marked seen. */
+export function sawYourTurn(): void {
+  kept.seenAt = performance.now();
+}
+
+/** Whether the tab at `href` shows the Your turn dot: the page says friends sent new games, and none were seen since. */
+export function newsShown(news: boolean, href: string): boolean {
+  // While a quiet refresh is loading, any sight of the list hides the dot; once it is in, this is worked out again.
+  if (kept.quiet) return news && kept.seenAt === 0;
+  return news && !(kept.seenAt > arrival(href).since);
 }
