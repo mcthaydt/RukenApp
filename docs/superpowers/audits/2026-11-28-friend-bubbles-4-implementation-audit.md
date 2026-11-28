@@ -20,7 +20,7 @@ Here: Chromium only (no WebKit, no Docker daemon in this container), Postgres 16
 - The check fails by itself: e611fe7's tests with d18d72e's `Feed.svelte`: all 4 `controls-overlap` journeys fail on "first screen", naming the tips over Like and Save at 320×568, and over Like and the maker ("N Night Owl Games Studio") at 375×667, before and after launch. Restored after.
 - `eslint` on the two changed files: clean.
 - Probe (uncommitted copy of the journey with more sizes, phone profile, signed out and signed in with a friend's like): the overlap check passed at 320×568, 375×667, 667×375, 360×640, 360×780, 390×844, 412×915, 430×932, 480×854, 540×960 (centred, past the 499px query), 844×390 and 568×320, before and after launch, on `/` and `/followed`. Measured: the tips end 12px left of the maker's column at every upright size (320: tips x 12–208, column from x 220; 375: 12–263 vs 275; 480: 12–272 vs 380), start at y 72 under the top bar, and end above the game's card at every size (320 before launch: tips bottom 188, card top 223).
-- CI at e611fe7: verify, postgres, pr rules, authors green; the six browser pieces were still running when this was written.
+- CI at e611fe7 (run 46094909174, quick draft run): verify, postgres, all six browser pieces and gate green. `controls-overlap` passed in WebKit on phone (both journeys, no retry) and on tablet.
 - Screens: /mnt/project-files/audits/2026-11-28-friend-bubbles-4/ (320×568 before launch, 375×667 after, 667×375 after).
 
 ## Audit 3's red
@@ -29,7 +29,7 @@ Fixed. The tips are clear of every button, the maker and the game's card at the 
 
 ## The flake
 
-The one WebKit failure of `controls-overlap.test.ts:217` signed out is recorded under Flaky tests as the rules ask (cause not found, message not kept). Acceptable for this merge: PR runs and sessions never retry, so CI's own WebKit run at e611fe7 is the evidence that counts, and it is the next thing to read. If it fails there, that is a red on this pull request, not a flake.
+The one WebKit failure of `controls-overlap.test.ts:217` signed out is recorded under Flaky tests as the rules ask (cause not found, message not kept). Acceptable for this merge: PR runs and sessions never retry, and CI's own WebKit run at e611fe7 passed both journeys first time. If it fails again in the full run, that is a red, not a second flake.
 
 ## Findings
 
