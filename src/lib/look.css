@@ -6001,6 +6001,12 @@ body:focus {
     filter: var(--glass-icon);
   }
 
+  /* The cookie card is drawn in front of everything once it opens, this notice included; while the notice asks, the
+     card waits under it and asks again once the phone is upright. */
+  body:has(.upright) dialog.consent {
+    display: none;
+  }
+
   .upright h2 {
     font: var(--text-section);
   }

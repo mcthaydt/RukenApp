@@ -43,8 +43,17 @@ for (const start of ["/", "/help"]) {
     await expect(card(page)).toHaveCount(0);
     await expect(page.locator("dialog:modal")).toHaveCount(0);
     // It scrolls by wheel to its end, where Read the terms is, once it has slid in (src/lib/page-moves).
-    await page.waitForFunction(() => document.elementFromPoint(100, 200)?.closest("main") != null);
-    await page.mouse.move(100, 200);
+    // Aimed at the middle of its column, which is centred on a computer and the whole width on a phone.
+    const middle = await page.waitForFunction(() => {
+      const main = document.querySelector("main");
+      if (main === null) return null;
+      const box = main.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const y = Math.min(box.top + box.height / 2, innerHeight / 2);
+      return document.elementFromPoint(x, y)?.closest("main") === main ? { x, y } : null;
+    });
+    const { x, y } = (await middle.jsonValue()) ?? { x: 0, y: 0 };
+    await page.mouse.move(x, y);
     await page.mouse.wheel(0, 20_000);
     await expect(page.getByRole("link", { name: "Read the terms" })).toBeInViewport();
     // A tap presses its links: How the feed works opens, and the browser's Back comes back to What we keep.
