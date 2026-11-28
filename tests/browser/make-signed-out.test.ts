@@ -64,12 +64,13 @@ test.describe("before a yes to cookies", () => {
     expect(scrolls).toBe(0);
     await showTheOwner(page, testInfo, "the plus, signed out");
   });
+});
 
-  test("a gamepad reaches every button on it", async ({ page }) => {
-    await plugInPad(page);
-    await pressThePlus(page);
-    await padReachesEverything(page);
-  });
+// With the cookie question answered, so the walk is over this screen's own buttons only.
+test("a gamepad reaches every button on it", async ({ page }) => {
+  await plugInPad(page);
+  await pressThePlus(page);
+  await padReachesEverything(page);
 });
 
 test("Join Ruken makes the account and comes back to Your games", async ({ page }) => {

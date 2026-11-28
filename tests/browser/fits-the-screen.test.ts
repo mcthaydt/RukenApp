@@ -354,6 +354,16 @@ test.describe("a phone held sideways", () => {
     await expect(turnUpright(page)).toHaveCount(0);
   });
 
+  // The maker's area filled the window's height and then kept a line of air under it, so it scrolled by that line
+  // (found 2026-11-28 building the plus's signed-out screen). Signed in, Your games' own words are taller than a phone
+  // held sideways; its sideways layout waits for the owner's multi-screen pass (progress.md).
+  test("Your games fits sideways when signed out", async ({ page }) => {
+    await asInstalled(page);
+    await opened(page, "/make");
+    await expect(page.getByRole("heading", { name: "Made a game?" })).toBeVisible();
+    expect(await overflow(page), "/make signed out, sideways").toEqual({ page: 0, view: 0 });
+  });
+
   test("opened from the Home Screen, it works sideways with the bar on the right", async ({ page }) => {
     await asInstalled(page);
     await page.goto("/sign-in");
