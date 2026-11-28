@@ -14,11 +14,12 @@
   import { askForYes, deviceStore, hasAgreed } from "../consent/consent.browser.ts";
   import { goto } from "$app/navigation";
   import { loads } from "../../lib/loads.ts";
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import { snapshot } from "$app/navigation";
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
-  import { clampClip, currentOf, stepFor } from "./current.ts";
+  import { CURRENT_AT, clampClip, currentOf, stepFor } from "./current.ts";
+  import { keepSound, soundWanted } from "./sound.ts";
   import GoodPick from "./GoodPick.svelte";
   import FeedTop from "./FeedTop.svelte";
   import FollowBadge from "./FollowBadge.svelte";
@@ -27,6 +28,7 @@
   import type { ShareSheetControl } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
   import type { ClipMarks, MarkKind } from "./marks.ts";
+  import { arrival, followingSince, keepMark, marksSince, refreshedSince } from "./kept.svelte.ts";
   import type { TabKey } from "./tabs.ts";
   import type { Friend } from "../sends/sends.browser.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
@@ -61,6 +63,26 @@
   // svelte-ignore state_referenced_locally
   let next = $state<string | null>(first.next);
   let more = $state<"idle" | "loading" | "failed">("idle");
+  // A quiet refresh (kept.svelte.ts) hands the feed a new first page in place: the clips up to the one on screen stay
+  // where they are, each with what the site says of it now, and the new page's other clips come after them. Past the
+  // new page's end, only what the site says of the clips changes.
+  // svelte-ignore state_referenced_locally
+  let merged = first;
+  $effect(() => {
+    const fresh = first;
+    if (fresh === merged) return;
+    merged = fresh;
+    untrack(() => {
+      since = refreshedSince();
+      const now = new Map(fresh.clips.map((clip) => [clip.key, clip]));
+      const stay = clips.slice(0, current + 1).map((clip) => now.get(clip.key) ?? clip);
+      const there = new Set(stay.map((clip) => clip.key));
+      if (current + 1 < fresh.clips.length) {
+        clips = [...stay, ...fresh.clips.filter((clip) => !there.has(clip.key))];
+        next = fresh.next;
+      } else clips = [...stay, ...clips.slice(current + 1).map((clip) => now.get(clip.key) ?? clip)];
+    });
+  });
 
   /** Where a first open's hints are remembered, so they show once on a device and never again. */
   const SEEN_HINTS = "rk_seen_hints";
@@ -78,7 +100,8 @@
   let warm = $state(false);
   let shape = $state<"upright" | "wide">("upright");
   let current = $state(0);
-  let soundOn = $state(false);
+  // As the person last left it, so coming back to the feed never turns the sound off by itself.
+  let soundOn = $state(soundWanted());
   // The clips a press has started, for a device that does not play a video by itself.
   let started = $state<string[]>([]);
   let autoplay = $state(false);
@@ -116,16 +139,17 @@
     asks = Object.fromEntries(Object.entries(asks).filter(([other]) => other !== key));
     goTo(index + 1);
   }
-  // A press on one clip's plus changes every clip by that maker, on this page and on pages still to come.
-  let followed = $state<Record<string, boolean>>({});
+  // The person's own presses (kept.svelte.ts): a press on one clip's plus changes every clip by that maker, and a press
+  // on a game's button every clip of that game (a game can be on the feed twice), on this page, on pages still to come
+  // and on the other tabs' pages asked for ahead. A press shows over a page asked for before it was made (`since`).
+  // On the server nothing has been pressed yet, and kept.svelte.ts is the browser's alone.
+  let since = $state(typeof window !== "undefined" ? arrival(location.pathname).since : 0);
 
-  // What a press changed, by game: a game can be on the feed twice, and both of its clips show the same marks.
-  let pressed = $state<Record<string, ClipMarks>>({});
   // The marks being sent, as "slug kind", so a second press waits for the first to come back.
   let sendingMarks = $state<string[]>([]);
   // The game whose press failed, for the line under its buttons.
   let markProblem = $state<string | null>(null);
-  const marksOf = (clip: FeedClip): ClipMarks => pressed[clip.slug] ?? clip.marks;
+  const marksOf = (clip: FeedClip): ClipMarks => marksSince(clip.slug, clip.marks, since);
   const FIELD: Record<MarkKind, "liked" | "saved" | "reposted"> = {
     like: "liked",
     save: "saved",
@@ -147,7 +171,7 @@
     const before = marksOf(clip);
     const on = !before[FIELD[kind]];
     const likes = kind === "like" ? before.likes + (on ? 1 : -1) : before.likes;
-    pressed[clip.slug] = { ...before, [FIELD[kind]]: on, likes: Math.max(0, likes) };
+    keepMark(clip.slug, { ...before, [FIELD[kind]]: on, likes: Math.max(0, likes) });
     sendingMarks = [...sendingMarks, busyKey];
     markProblem = null;
     try {
@@ -158,16 +182,16 @@
       });
       if (answer.status === 401) {
         // Signed out: sign in, and the press is made on the way back.
-        pressed[clip.slug] = before;
+        keepMark(clip.slug, before);
         const said = await answer.json<{ go?: string }>().catch(() => ({ go: undefined }));
         await goto(said.go ?? `/sign-in?next=${encodeURIComponent("/")}`);
         return;
       }
       if (!answer.ok) throw new Error(`the site answered ${String(answer.status)}`);
       const said = await answer.json<{ on: boolean; likes: number }>();
-      pressed[clip.slug] = { ...marksOf(clip), [FIELD[kind]]: said.on, likes: said.likes };
+      keepMark(clip.slug, { ...marksOf(clip), [FIELD[kind]]: said.on, likes: said.likes });
     } catch {
-      pressed[clip.slug] = { ...marksOf(clip), [FIELD[kind]]: before[FIELD[kind]], likes: before.likes };
+      keepMark(clip.slug, { ...marksOf(clip), [FIELD[kind]]: before[FIELD[kind]], likes: before.likes });
       markProblem = clip.slug;
     } finally {
       sendingMarks = sendingMarks.filter((one) => one !== busyKey);
@@ -276,6 +300,15 @@
     if (warm && next !== null && more === "idle" && current >= clips.length - ASK_AHEAD) void loadMore();
   });
 
+  /** Whether a screen fills the share of the feed's window that makes it the one a person is on, measured now. */
+  function fillsWindow(screen: HTMLElement | null | undefined): boolean {
+    if (!screen || !feed) return false;
+    const view = feed.getBoundingClientRect();
+    const box = screen.getBoundingClientRect();
+    const shown = Math.min(box.bottom, view.bottom) - Math.max(box.top, view.top);
+    return box.height > 0 && shown / box.height >= CURRENT_AT;
+  }
+
   async function loadMore(): Promise<void> {
     if (next === null) return;
     more = "loading";
@@ -286,8 +319,10 @@
       const have = new Set(clips.map((clip) => clip.key));
       const had = clips.length;
       // Whether the person is on the spinner. The browser keeps a snapped screen in view when what is above it grows, so
-      // without a move they would stay on the spinner as it went down the page, and it would ask again and again.
-      const waiting = current >= had;
+      // without a move they would stay on the spinner as it went down the page, and it would ask again and again. The
+      // watcher can be late on a busy phone (it tells only when the browser next draws), so the page can come while
+      // `current` is still the last clip though the spinner fills the window: the spinner's own place is looked at too.
+      const waiting = current >= had || fillsWindow(moreScreen);
       clips = [...clips, ...page.clips.filter((clip) => !have.has(clip.key))];
       if (page.ask) asks = { ...asks, [page.ask.key]: page.ask };
       if (page.caughtUp !== undefined) caughtUp = [...caughtUp, page.caughtUp];
@@ -330,12 +365,20 @@
             // The start finished after a person moved on: the clip that is not on screen waits at its start.
             if (index !== current) video.pause();
           })
-          .catch(() => {
+          .catch((error: unknown) => {
             // A person moved on while the clip was starting: that is our own pause cutting the start short, and the
             // clip must stay paused (a retry here would play a clip nobody is looking at).
             if (index !== current) return;
+            // The start was cut short, not refused: Safari's engine does this to the clip on screen as the feed comes
+            // back from a game's page (its address is put back while it starts). The sound was never refused, so the
+            // clip starts again as it was, and only a refusal turns the sound off.
+            if (!(error instanceof DOMException && error.name === "NotAllowedError")) {
+              video.play().catch(() => undefined);
+              return;
+            }
             // The browser would not play with sound: the quiet answer is to play without it, and the mark says so.
             if (soundOn) soundOn = false;
+            keepSound(false);
             video.muted = true;
             video.play().catch(() => undefined);
           });
@@ -362,6 +405,7 @@
 
   function pressSound(slug: string): void {
     soundOn = !soundOn;
+    keepSound(soundOn);
     if (!started.includes(slug)) started = [...started, slug];
     forgetHints();
   }
@@ -711,11 +755,8 @@
                   <FollowBadge
                     handle={maker.handle}
                     name={maker.name}
-                    following={followed[maker.handle] ?? maker.following}
+                    following={followingSince(maker.handle, maker.following, since)}
                     back={tab === "followed" ? "/followed" : "/"}
-                    onchange={(now: boolean) => {
-                      followed[maker.handle] = now;
-                    }}
                   />
                 {/if}
               </div>
