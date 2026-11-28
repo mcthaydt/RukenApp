@@ -20,7 +20,7 @@ describe("loadsAgainOnReturn", () => {
 });
 
 describe("movesAsPageLoad", () => {
-  const here = "https://ruken.io";
+  const here = new URL("https://ruken.io/search");
   const move = { willUnload: false, type: "link", to: new URL("https://ruken.io/me"), here };
 
   it("makes a move inside the app a page load once a newer version is out", () => {
@@ -37,5 +37,12 @@ describe("movesAsPageLoad", () => {
     expect(movesAsPageLoad(true, { ...move, willUnload: true })).toBe(false);
     expect(movesAsPageLoad(true, { ...move, to: new URL("https://example.com/") })).toBe(false);
     expect(movesAsPageLoad(true, { ...move, to: null })).toBe(false);
+  });
+
+  it("leaves a move to the same screen alone, as Search makes while a person types", () => {
+    expect(
+      movesAsPageLoad(true, { ...move, type: "goto", to: new URL("https://ruken.io/search?q=ab") }),
+    ).toBe(false);
+    expect(movesAsPageLoad(true, { ...move, to: new URL("https://ruken.io/search") })).toBe(false);
   });
 });

@@ -112,7 +112,7 @@
       willUnload: navigation.willUnload,
       type: navigation.type,
       to: navigation.to?.url ?? null,
-      here: location.origin,
+      here: new URL(location.href),
     };
     if (navigation.to !== null && movesAsPageLoad(updated.current, move)) {
       navigation.cancel();

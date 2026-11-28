@@ -71,3 +71,20 @@ test("with no newer version out, coming back and moving stay in the open page", 
   await pageHasSettled(page);
   expect(await stillOpen(page)).toBe(true);
 });
+
+test("typing in Search with a newer version out keeps the screen, every key in order", async ({ page }) => {
+  await open(page, "/search");
+  await newerVersionOut(page);
+  await comeBackToTheTab(page);
+  await stayed(page);
+  const steps = await page.evaluate(() => history.length);
+  const field = page.getByRole("searchbox", { name: "Search games and makers" });
+  await field.pressSequentially("ab");
+  // Search moves to its own address once the person pauses, then again when they go on typing.
+  await expect(page).toHaveURL("/search?q=ab");
+  await field.pressSequentially("cdefgh");
+  await expect(page).toHaveURL("/search?q=abcdefgh");
+  await expect(field).toHaveValue("abcdefgh");
+  expect(await stillOpen(page)).toBe(true);
+  expect(await page.evaluate(() => history.length)).toBe(steps);
+});

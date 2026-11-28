@@ -18,17 +18,20 @@ export function loadsAgainOnReturn(routeId: string | null): boolean {
 /**
  * Whether a move inside the app is made as a whole page load instead, so it arrives in the newer version. A move the
  * browser already makes as a page load, a move to another site, and Back or Forward (a page load there would add a
- * step to the tab's history) go as they are; the next move after Back loads the newer version.
+ * step to the tab's history) go as they are; the next move after Back loads the newer version. A move to the screen the
+ * person is on (Search as they type, an answer that comes back to the same screen) goes as it is too: a page load there
+ * would lose the keys typed meanwhile and add a step to the history.
  */
 export function movesAsPageLoad(
   newerVersionOut: boolean,
-  move: { willUnload: boolean; type: string; to: URL | null; here: string },
+  move: { willUnload: boolean; type: string; to: URL | null; here: URL },
 ): boolean {
   return (
     newerVersionOut &&
     !move.willUnload &&
     move.type !== "popstate" &&
     move.to !== null &&
-    move.to.origin === move.here
+    move.to.origin === move.here.origin &&
+    move.to.pathname !== move.here.pathname
   );
 }
