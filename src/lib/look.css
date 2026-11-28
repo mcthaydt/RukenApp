@@ -5323,6 +5323,16 @@ header:has(+ main.about) {
   list-style: none;
 }
 
+/* Each link at the foot is a whole row as tall as a finger, one under the other, so no two rows' tap areas overlap
+   (a link in words takes its extra height back from its margins, which stacked them over each other here). */
+.about .sitefoot li + li {
+  margin-top: 0;
+}
+
+.about .sitefoot li > a {
+  margin-block: 0;
+}
+
 @media (min-width: 48rem) {
   .about .hero {
     padding: 3rem 2rem;

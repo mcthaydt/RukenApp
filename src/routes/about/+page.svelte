@@ -32,6 +32,27 @@
   let page: HTMLElement;
 
   let pastHero = $state(false);
+  let overAControl = $state(false);
+  let corner: HTMLAnchorElement;
+
+  /**
+   * Whether a button or link of the page sits where the corner button rests. It then steps out of the way, so it never
+   * covers one (the owner, 2026-11-27: no two controls ever overlap). Its place is read from its offsets, which ignore
+   * the slide that moves it, and runs down to the window's foot, the way it slides in and out.
+   */
+  function cornerWouldCover(): boolean {
+    const left = corner.offsetLeft;
+    const top = corner.offsetTop;
+    const right = left + corner.offsetWidth;
+    const bottom = window.innerHeight;
+    for (const control of page.querySelectorAll("a, button")) {
+      if (control === corner) continue;
+      const box = control.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) continue;
+      if (box.left < right && left < box.right && box.top < bottom && top < box.bottom) return true;
+    }
+    return false;
+  }
 
   onMount(() => {
     const stop = startMotion(page);
@@ -41,7 +62,22 @@
       pastHero = entry !== undefined && !entry.isIntersecting;
     });
     if (hero !== null) watcher.observe(hero);
+    // Checked once a frame at most while the page scrolls or the window changes size.
+    let pending = 0;
+    const check = () => {
+      if (pending !== 0) return;
+      pending = requestAnimationFrame(() => {
+        pending = 0;
+        overAControl = cornerWouldCover();
+      });
+    };
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
     return () => {
+      cancelAnimationFrame(pending);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
       watcher.disconnect();
       stop();
     };
@@ -226,14 +262,16 @@
   </section>
 
   <!-- Back to the feed from anywhere below the first screen (which has its own blue button): a phone with a fingertip
-       swiping up it, in the corner. It slides in once the first screen has gone by. -->
+       swiping up it, in the corner. It slides in once the first screen has gone by, and slides away while another
+       button or link passes under it. -->
   <a
     class="tofeed"
+    bind:this={corner}
     href={TO_FEED.href}
     aria-label={TO_FEED.words}
     title={TO_FEED.words}
-    data-away={pastHero ? undefined : ""}
-    inert={!pastHero}
+    data-away={pastHero && !overAControl ? undefined : ""}
+    inert={!pastHero || overAControl}
   >
     <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
       <rect
