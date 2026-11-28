@@ -25,9 +25,10 @@ export const SEND_WORDS = {
   stopAsk: (name: string) => `Stop games from ${name}? They won't be told.`,
   stopYes: "Stop",
   stopNo: "Keep",
-  stoppedLink: "People you stopped",
-  stoppedTitle: "People you stopped",
-  stoppedEmpty: "You haven't stopped anyone.",
+  /** The friends whose games are kept out of Your turn ("People you stopped" before; the owner, 2026-11-28, asked what it was). */
+  stoppedLink: "Friends who can't send you games",
+  stoppedTitle: "Friends who can't send you games",
+  stoppedEmpty: "Every friend can send you games.",
   undo: "Undo",
   undoLabel: (name: string) => `Let games from ${name} through again`,
   today: "Today",

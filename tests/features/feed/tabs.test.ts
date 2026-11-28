@@ -79,8 +79,57 @@ describe("a trackpad swipe", () => {
     expect(second.steps).toEqual([-1]);
   });
 
-  it("with no rest between, a turn back the other way is still the same swipe", () => {
-    expect(wheel([...trackpadSwipe(1), ...trackpadSwipe(-1)]).steps).toEqual([1]);
+  it("with no rest between, a turn back the other way is a swipe of its own", () => {
+    expect(wheel([...trackpadSwipe(1), ...trackpadSwipe(-1)]).steps).toEqual([1, -1]);
+  });
+
+  it("a second swipe the same way while the first still coasts steps again", () => {
+    const coast: [number, number][] = Array.from({ length: 60 }, () => [1, 0]);
+    expect(wheel([...trackpadSwipe(1), ...coast, ...trackpadSwipe(1)]).steps).toEqual([1, 1]);
+  });
+
+  it("a sideways swipe while a scroll up or down still coasts steps", () => {
+    const scroll: [number, number][] = [10, 30, 50, 60, 45, 30, 20, 12, 8, 5, 3, 2, 1].map((dy) => [0, dy]);
+    expect(wheel([...scroll, ...trackpadSwipe(1)]).steps).toEqual([1]);
+  });
+
+  it("a coast that slows unevenly, or comes held back by a busy moment, steps only once", () => {
+    const moves = trackpadSwipe(1).map(([dx, dy], index) => ({ dx, dy, at: 1000 + 16 * index }));
+    const stepsOf = (run: { dx: number; dy: number; at: number }[]): number[] => {
+      let swipe = WHEEL_STILL;
+      const steps: number[] = [];
+      for (const { dx, dy, at } of run) {
+        const result = stepOfWheel(swipe, dx, dy, at);
+        swipe = result.swipe;
+        if (result.step !== null) steps.push(result.step);
+      }
+      return steps;
+    };
+    // A busy page hands on the moves it held back all at once with one stamp, at the coast's start and at its end.
+    for (const [from, to] of [
+      [6, 12],
+      [12, 20],
+    ] as const) {
+      const late = moves.map((move, index) =>
+        index >= from && index < to ? { ...move, at: moves[to]?.at ?? 0 } : move,
+      );
+      expect(stepsOf(late), `held back from ${String(from)} to ${String(to)}`).toEqual([1]);
+      // Or summed into one move.
+      const held = moves.slice(from, to);
+      const summed = {
+        dx: held.reduce((sum, move) => sum + move.dx, 0),
+        dy: held.reduce((sum, move) => sum + move.dy, 0),
+        at: held.at(-1)?.at ?? 0,
+      };
+      expect(
+        stepsOf([...moves.slice(0, from), summed, ...moves.slice(to)]),
+        `summed ${String(from)}`,
+      ).toEqual([1]);
+    }
+    const wobbly: [number, number][] = [
+      12, 30, 45, 50, 40, 32, 34, 25, 26, 18, 19, 12, 13, 8, 9, 5, 6, 3, 4, 2, 2, 1,
+    ].map((dx) => [dx, 0]);
+    expect(wheel(wobbly).steps).toEqual([1]);
   });
 
   it("too short, or up and down to the next clip, is not a tab change", () => {
@@ -89,9 +138,9 @@ describe("a trackpad swipe", () => {
     expect(wheel(Array.from({ length: 30 }, () => [0, 40])).steps).toEqual([]);
   });
 
-  it("that starts up and down stays a scroll, even if it drifts sideways later", () => {
+  it("that starts up and down stays a scroll, even if it drifts a little sideways later", () => {
     const down: [number, number][] = Array.from({ length: 10 }, () => [0, 40]);
-    const drift: [number, number][] = Array.from({ length: 10 }, () => [30, 0]);
+    const drift: [number, number][] = Array.from({ length: 10 }, () => [5, 20]);
     expect(wheel([...down, ...drift]).steps).toEqual([]);
   });
 });
