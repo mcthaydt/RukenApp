@@ -1,12 +1,11 @@
 <!--
   The Your turn tab's list (games-sent-to-you brief): the games friends sent this person, newest first. Each row opens
-  the game's page; beside it, Remove takes it off at once, and under the sender's name a → button stops that person
-  sending more, after asking once. Nothing moves under it, so it is plain page colours, not glass. The list scrolls
+  the game's page; beside it, Remove takes it off at once. To stop a friend sending games, the person unfollows
+  them (the owner, 2026-11-28: "drop it and let unfollow do the job"). Nothing moves under it, so it is plain page colours, not glass. The list scrolls
   inside its own box; the page stays still. The screen's top bar (the feed's tabs) is the route's, not this one's.
 -->
 <script lang="ts">
   import { onMount } from "svelte";
-  import { refreshAll } from "$app/navigation";
   import Icon from "../../lib/icon.svelte";
   import { loads } from "../../lib/loads.ts";
   import { SEND_WORDS, whenWords } from "./words.ts";
@@ -68,38 +67,6 @@
       failed = id;
     }
   }
-
-  let stopCard = $state<HTMLDialogElement>();
-  let stopping = $state<Row | null>(null);
-  let stopOpener: HTMLElement | null = null;
-
-  // Stop is sent from here, not as a plain form: the answer is the route's own, and the list is read again after, so
-  // every game from that person goes at once. A failure keeps the card open and says so.
-  let stopFailed = $state(false);
-  async function stop(event: SubmitEvent & { currentTarget: HTMLFormElement }): Promise<void> {
-    event.preventDefault();
-    const form = event.currentTarget;
-    stopFailed = false;
-    try {
-      const answer = await fetch(form.action, {
-        method: "POST",
-        body: new FormData(form),
-        headers: { accept: "application/json" },
-      });
-      if (!answer.ok) throw new Error(`the site answered ${String(answer.status)}`);
-      await refreshAll();
-      stopCard?.close();
-    } catch {
-      stopFailed = true;
-    }
-  }
-
-  function askStop(row: Row, from: HTMLElement): void {
-    stopFailed = false;
-    stopping = row;
-    stopOpener = from;
-    stopCard?.showModal();
-  }
 </script>
 
 <main class="yourturn" aria-busy="false">
@@ -135,15 +102,6 @@
               ><Icon name="remove" /></button
             >
           </form>
-          <button
-            type="button"
-            class="go stop"
-            onclick={(event) => {
-              askStop(row, event.currentTarget);
-            }}
-          >
-            {SEND_WORDS.stop(from(row))}
-          </button>
           {#if failed === row.id}
             <p class="problem" role="alert">{SEND_WORDS.failed}</p>
           {/if}
@@ -151,31 +109,7 @@
       {/each}
     </ul>
   {/if}
-  {#if signedIn}
-    <p class="more"><a class="go" href="/your-turn/stopped">{SEND_WORDS.stoppedLink}</a></p>
-  {/if}
 </main>
-
-<dialog
-  class="stopcard"
-  bind:this={stopCard}
-  aria-labelledby="stop-title"
-  onclose={() => {
-    stopOpener?.focus();
-  }}
->
-  {#if stopping !== null}
-    <h2 id="stop-title">{SEND_WORDS.stopAsk(from(stopping))}</h2>
-    <form method="POST" action="/your-turn/stop" onsubmit={(event) => void stop(event)}>
-      <input type="hidden" name="id" value={stopping.id} />
-      <button class="danger">{SEND_WORDS.stopYes}</button>
-    </form>
-    <button type="button" class="quiet" onclick={() => stopCard?.close()}>{SEND_WORDS.stopNo}</button>
-    {#if stopFailed}
-      <p class="problem" role="alert">{SEND_WORDS.failed}</p>
-    {/if}
-  {/if}
-</dialog>
 
 <style>
   .yourturn {
@@ -260,47 +194,8 @@
   .remove {
     margin: 0;
   }
-  /* The → button under the sender: smaller words, still a full target to press, lined up with the words. */
-  .stop {
-    grid-column: 1;
-    justify-self: start;
-    min-height: var(--size-target);
-    margin: 0 0 0 calc(64px + 0.75rem);
-    padding: 0;
-    border: 0;
-    background: none;
-    box-shadow: none;
-    font-size: 0.875rem;
-  }
   .problem {
     grid-column: 1 / -1;
     margin: 0;
-  }
-  .more {
-    margin: 0;
-  }
-  .stopcard {
-    width: min(24rem, calc(100vw - 2rem));
-    padding: 1.5rem;
-    border: 0;
-    border-radius: var(--radius-card);
-    background: var(--glass-bg);
-    -webkit-backdrop-filter: var(--glass-filter);
-    backdrop-filter: var(--glass-filter);
-    box-shadow: var(--glass-edge);
-    color: var(--chalk);
-    text-shadow: var(--glass-ink);
-  }
-  .stopcard h2 {
-    margin: 0 0 1rem;
-    font: var(--text-statement);
-  }
-  .stopcard form,
-  .stopcard form button,
-  .stopcard > button {
-    width: 100%;
-  }
-  .stopcard > button {
-    margin-top: 0.5rem;
   }
 </style>
