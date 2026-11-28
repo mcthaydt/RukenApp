@@ -61,6 +61,8 @@ async function facesPlaced(clip: Locator): Promise<void> {
   if (faces === null || card === null) throw new Error("the faces or the game's card are not on screen");
   expect(Math.abs(faces.x - card.x)).toBeLessThanOrEqual(1);
   expect(faces.y + faces.height).toBeLessThanOrEqual(card.y);
+  // Just above it, not adrift up the clip.
+  expect(card.y - (faces.y + faces.height)).toBeLessThanOrEqual(12);
   expect(faces.y).toBeGreaterThanOrEqual(0);
   const under = await clip.evaluate(
     (section, at) => {

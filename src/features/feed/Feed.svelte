@@ -606,31 +606,39 @@
         {/if}
 
         <div class="lower">
-          {#if clip.friends.faces.length > 0}
-            <!-- Friends who liked it: up to three faces, newest like first, then +N, floating over the clip above the
-                 game's card and behind it (the owner, 2026-11-27: "floating in the air behind the floating UI, but in
-                 front of the video like instagram"). A picture to look at, not a control, so Tab and a gamepad pass
-                 over it and a press goes through to the clip. -->
-            <div class="friends" role="img" aria-label={friendsWords(clip.friends)}>
-              <svg class="liked" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path
-                  d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
-                  fill="currentColor"
-                />
-              </svg>
-              {#each clip.friends.faces as face, at (at)}
-                {#if face.photo !== null}
-                  <img class="face" use:loads src={face.photo} alt="" width="28" height="28" loading="lazy" />
-                {:else}
-                  <span class="face" aria-hidden="true">{initialOf(face.name)}</span>
-                {/if}
-              {/each}
-              {#if clip.friends.more > 0}
-                <span class="others" aria-hidden="true">+{clip.friends.more}</span>
-              {/if}
-            </div>
-          {/if}
           <div class="band" data-pad-first>
+            {#if clip.friends.faces.length > 0}
+              <!-- Friends who liked it: up to three faces, newest like first, then +N, floating over the clip above the
+                   game's card and behind it (the owner, 2026-11-27: "floating in the air behind the floating UI, but in
+                   front of the video like instagram"). A picture to look at, not a control, so Tab and a gamepad pass
+                   over it and a press goes through to the clip. -->
+              <div class="friends" role="img" aria-label={friendsWords(clip.friends)}>
+                <svg class="liked" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
+                    fill="currentColor"
+                  />
+                </svg>
+                {#each clip.friends.faces as face, at (at)}
+                  {#if face.photo !== null}
+                    <img
+                      class="face"
+                      use:loads
+                      src={face.photo}
+                      alt=""
+                      width="28"
+                      height="28"
+                      loading="lazy"
+                    />
+                  {:else}
+                    <span class="face" aria-hidden="true">{initialOf(face.name)}</span>
+                  {/if}
+                {/each}
+                {#if clip.friends.more > 0}
+                  <span class="others" aria-hidden="true">+{clip.friends.more}</span>
+                {/if}
+              </div>
+            {/if}
             <!-- A swipe can start on the name too, so it never loads the game's page (and who brought this person)
                  ahead of a press. -->
             <a class="gamelink" data-sveltekit-preload-data="off" href={`/g/${clip.slug}`}>
@@ -993,11 +1001,12 @@
     text-align: center;
     text-shadow: var(--glass-ink);
   }
+  /* Over the game's card and the friends' faces floating above it, which stay behind every floating piece. */
   .hints {
     position: absolute;
     top: 38%;
     left: 50%;
-    z-index: 2;
+    z-index: 3;
     translate: -50% 0;
     width: max-content;
     max-width: calc(100% - 2rem);
@@ -1063,8 +1072,7 @@
   .friends {
     position: absolute;
     bottom: calc(100% + 0.5rem);
-    left: 0.75rem;
-    z-index: -1;
+    left: 0;
     display: flex;
     align-items: center;
     pointer-events: none;
@@ -1259,9 +1267,6 @@
       column-gap: 0.75rem;
       row-gap: 0.25rem;
       padding: 0.5rem 0.75rem;
-    }
-    .friends {
-      left: max(0.75rem, env(safe-area-inset-left));
     }
     .play {
       width: auto;
