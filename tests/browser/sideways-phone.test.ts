@@ -249,19 +249,18 @@ for (const phone of PHONES) {
   test.describe(`on ${phone.name} held sideways, before a yes to cookies`, () => {
     test.use({ viewport: phone.viewport, storageState: NOT_CONSENTED });
 
-    test("the cookie card sits at the foot, wholly in the window and clear of the bar", async ({
-      page,
-    }, testInfo) => {
+    test("the cookie card asks in front of the screen, wholly in the window", async ({ page }, testInfo) => {
       for (const path of ["/", "/help"]) {
         await page.goto(path);
-        const card = page.getByRole("complementary").filter({ has: page.locator("#consent-title") });
+        const card = page.getByRole("dialog").filter({ has: page.locator("#consent-title") });
         await expect(card, path).toBeVisible();
-        const { x } = await expectBarOnTheRight(page);
+        await expect(page.locator("dialog.consent:modal"), path).toHaveCount(1);
+        await expectBarOnTheRight(page);
         const box = await boxOf(card);
         expect(box.x, path).toBeGreaterThanOrEqual(0);
-        expect(box.x + box.width, path).toBeLessThanOrEqual(x);
+        expect(box.y, path).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, path).toBeLessThanOrEqual(phone.viewport.width);
         expect(box.y + box.height, path).toBeLessThanOrEqual(phone.viewport.height);
-        expect(phone.viewport.height - (box.y + box.height), path).toBeLessThanOrEqual(24);
         await showTheOwner(page, testInfo, `the cookie card on ${path}, ${phone.name} sideways`);
       }
     });
@@ -275,9 +274,7 @@ for (const phone of PHONES) {
       await page.context().clearCookies({ name: "rk_consent" });
       await page.goto(`/make/${game.slug}/name`);
       await expect(page.getByRole("heading", { name: "Cookies?", level: 1 })).toBeVisible();
-      await expect(
-        page.getByRole("complementary").filter({ has: page.locator("#consent-title") }),
-      ).toHaveCount(0);
+      await expect(page.locator("#consent-title")).toHaveCount(0);
       await expect(page.locator(".screen .acts")).toHaveCount(0);
       await showTheOwner(page, testInfo, `a step before a yes to cookies, ${phone.name} sideways`);
     });

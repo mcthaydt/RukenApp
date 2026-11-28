@@ -398,6 +398,21 @@ test.describe("a phone held sideways", () => {
     await expect(turnUpright(page)).toHaveCount(0);
   });
 
+  test("in a browser tab, the cookie card waits under the notice and asks once the phone is upright", async ({
+    page,
+  }) => {
+    await page.context().clearCookies({ name: "rk_consent" });
+    for (const path of ["/", "/help"]) {
+      await page.setViewportSize({ width: 667, height: 375 });
+      await page.goto(path);
+      await expect(turnUpright(page), path).toBeVisible();
+      await expect(page.locator("dialog.consent"), path).toBeHidden();
+      await page.setViewportSize({ width: 375, height: 667 });
+      await expect(turnUpright(page), path).toBeHidden();
+      await expect(page.locator("dialog.consent:modal"), path).toBeVisible();
+    }
+  });
+
   test("opened from the Home Screen, it works sideways with the bar on the right", async ({ page }) => {
     await asInstalled(page);
     await page.goto("/sign-in");

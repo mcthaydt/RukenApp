@@ -1,7 +1,8 @@
 <!--
-  The cookie notice (design 3.4), in two shapes: a frosted card at the bottom of every screen until the browser
-  chooses, and, on /cookies, the whole screen's one card (sent there by a button that needs the yes).
-  "I agree" is a plain form that works before scripts load; with scripts it does not reload the screen.
+  The cookie notice (design 3.4), in two shapes: a card in front of every screen until the browser chooses, the
+  screen dimmed behind it and taking no press until an answer (so the card never sits on one of its buttons), and, on
+  /cookies, the whole screen's one card (sent there by a button that needs the yes).
+  "I agree" is a plain form; with scripts it does not reload the screen. The card opens once scripts have loaded.
   "Not now" sends nothing and stores nothing: on the card it hides the card until the next visit.
 -->
 <script lang="ts">
@@ -16,7 +17,6 @@
     next,
     from,
     card = false,
-    aboveBar = false,
     onNotNow,
     onAgreed,
   }: {
@@ -26,10 +26,8 @@
     next: string;
     /** The page the notice was opened on, so a yes keeps the maker who brought the person. */
     from: string;
-    /** The small card at the bottom of a screen, not the screen's own card. */
+    /** The card in front of a screen, not the screen's own card. */
     card?: boolean;
-    /** The bar of Home and You is on this screen, so the card sits above it. */
-    aboveBar?: boolean;
     onNotNow: () => void;
     /** Runs once "I agree" has been kept, on the same screen (a press that waited for the yes). */
     onAgreed?: () => void;
@@ -55,6 +53,26 @@
   $effect(() => {
     if (card && reason !== null) agreeButton?.focus();
   });
+
+  // The card is a dialog that holds the screen until an answer: everything behind it takes no press and no focus, so
+  // nothing of the page is ever under a button of the card, and the pad and Tab stay on its answers. It opens only
+  // once scripts have loaded, together with the dim behind it: drawn open from the server it would sit over the
+  // screen's buttons with nothing dimmed until then. Escape is Not now.
+  let cardBox = $state<HTMLDialogElement>();
+  $effect(() => {
+    const box = cardBox;
+    if (box === undefined || box.matches(":modal")) return;
+    box.close();
+    box.showModal();
+    // Opening it puts the focus on I agree, which would draw its ring for a tap; the card itself holds the focus, so
+    // the first Tab or move of the pad lands on I agree. A press that needs the yes still focuses I agree (above).
+    if (reason === null) box.focus();
+  });
+
+  function escaped(event: Event): void {
+    event.preventDefault();
+    onNotNow();
+  }
 
   /** "Not now" on the notice's own screen leaves it: to the Ruken page the person came from, or the feed. Never back to another website. */
   function leave(event: MouseEvent): void {
@@ -87,7 +105,13 @@
 {/snippet}
 
 {#if card}
-  <aside class="consent" class:above-bar={aboveBar} aria-labelledby="consent-title">
+  <dialog
+    bind:this={cardBox}
+    class="consent"
+    aria-labelledby="consent-title"
+    tabindex="-1"
+    oncancel={escaped}
+  >
     <h2 id="consent-title">Cookies?</h2>
     {#if reason !== null}
       <p class="why">{WHY[reason]}</p>
@@ -102,7 +126,7 @@
       <button type="button" class="safe" onclick={onNotNow}>Not now</button>
     </div>
     <p class="note"><a class="go" href="/privacy">What we keep</a></p>
-  </aside>
+  </dialog>
 {:else}
   <main class="card">
     <h1>Cookies?</h1>

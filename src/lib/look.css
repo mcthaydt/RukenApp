@@ -5698,8 +5698,8 @@ video[data-still][data-loading] {
   transform: translateY(calc(100% + 2rem));
 }
 
-/* While the cookie card asks at the foot of the window, the corner button waits under it instead of being half hidden. */
-body:has(aside.consent) .about .tofeed {
+/* While the cookie card asks in front of the page, the corner button waits under it. */
+body:has(dialog.consent) .about .tofeed {
   visibility: hidden;
 }
 
@@ -5808,17 +5808,24 @@ html:has(main.about) :is(a, button, summary, label) {
   text-wrap: balance;
 }
 
-/* The cookie notice (src/features/consent/Notice.svelte): a frosted card at the bottom of every screen until the browser
-   chooses, above the bar of Home and You where that is shown. Its two answers are one size and one weight: side by side,
-   or one above the other on the smallest phone, each as wide as the other. */
-.consent {
+/* The cookie notice (src/features/consent/Notice.svelte): a card in the middle of every screen until the browser
+   chooses, in front of a dim of the screen, which waits behind it and takes no press until an answer. So it never sits
+   on a button of the page (the owner's rule: no two controls ever overlap), on any screen or size. It is a panel over
+   the screen, so it is the darker panel glass where what is behind moves, as Share is, and solid on a plain page. Its
+   two answers are one size and one weight: side by side, or one above the other on the smallest phone, each as wide as
+   the other. */
+dialog.consent {
+  --glass-bg: var(--glass-panel-bg);
+  --glass-filter: var(--glass-panel-filter);
   position: fixed;
-  bottom: max(0.75rem, env(safe-area-inset-bottom));
-  left: 50%;
+  inset: 0;
   z-index: 30;
-  translate: -50% 0;
   box-sizing: border-box;
   width: min(100% - 1.5rem, var(--width-read));
+  max-height: calc(100% - 1.5rem);
+  margin: auto;
+  overflow-y: auto;
+  border: 0;
   padding: 1rem 1.25rem;
   border-radius: var(--radius-card);
   background: var(--glass-bg);
@@ -5840,8 +5847,15 @@ html:has(main.about) :is(a, button, summary, label) {
   box-shadow: var(--glass-edge);
 }
 
-.consent.above-bar {
-  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.25rem);
+/* The card holds the focus as it opens, so it draws no ring of its own. */
+dialog.consent:focus {
+  outline: none;
+}
+
+dialog.consent::backdrop {
+  background: var(--dim-bg);
+  -webkit-backdrop-filter: var(--dim-filter);
+  backdrop-filter: var(--dim-filter);
 }
 
 .consent h2 {
@@ -5891,17 +5905,6 @@ html:has(main.about) :is(a, button, summary, label) {
   width: 100%;
   min-width: 0;
   margin: 0;
-}
-
-/* A phone held sideways: the bar stands along the right edge, so the card stays at the foot and keeps clear of it. */
-@media (orientation: landscape) and (max-height: 449px) {
-  .consent,
-  .consent.above-bar {
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
-    left: max(0.75rem, env(safe-area-inset-left));
-    translate: none;
-    width: min(100% - 1.5rem - var(--rail, 0px), var(--width-read));
-  }
 }
 
 @media (max-width: 22rem) {
@@ -6006,6 +6009,12 @@ body:focus {
 
   .upright svg {
     filter: var(--glass-icon);
+  }
+
+  /* The cookie card is drawn in front of everything once it opens, this notice included; while the notice asks, the
+     card waits under it and asks again once the phone is upright. */
+  body:has(.upright) dialog.consent {
+    display: none;
   }
 
   .upright h2 {

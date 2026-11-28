@@ -247,11 +247,11 @@
   <TurnUpright />
 {/if}
 
-<!-- A press that needs the yes opens the card again, even after "Not now", and says what for (consent/ask.svelte.ts). -->
+<!-- A press that needs the yes opens the card again, even after "Not now", and says what for (consent/ask.svelte.ts).
+     It asks in front of the screen, which waits dimmed until an answer, so the card never sits on one of its buttons. -->
 {#if !data.consented && (!notNow || consentAsk.reason !== null) && !READ_IN_PEACE.includes(page.route.id ?? "")}
   <Notice
     card
-    aboveBar={barShown}
     reason={consentAsk.reason}
     next={page.url.pathname + page.url.search}
     from={page.url.pathname + page.url.search}

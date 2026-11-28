@@ -233,6 +233,8 @@ test("a visitor who has not said yes to cookies is asked to sign in too", async 
     const page = await context.newPage();
     await page.goto(`/g/${live.slug}`);
     await pageHasSettled(page);
+    // The cookie question asks in front of the page first; Not now leaves the page to them.
+    await page.getByRole("button", { name: "Not now" }).click();
     await page.getByRole("button", { name: "Report", exact: true }).click();
     await expect(sheet(page).getByText("Sign in to report a game.")).toBeVisible();
   } finally {

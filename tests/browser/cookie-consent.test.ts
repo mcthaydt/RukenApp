@@ -184,7 +184,10 @@ test("saying yes from a game's page keeps the maker who brought the person", asy
   await pageHasSettled(page);
   await notNow(page).click();
   await expect(asking(page)).toHaveCount(0);
+  // A new visit asks again, in front of the page: Not now, and the page is the person's to press.
   await page.goto(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  await notNow(page).click();
   await page.getByRole("link", { name: "Play" }).click();
   await expect(page.getByText("To play, Ruken needs")).toBeVisible();
   await agreeButton(page).click();
@@ -330,4 +333,29 @@ test("Wishlist before a yes shows the notice and sets nothing; after the yes it 
   await page.getByRole("button", { name: "Take it back" }).click();
   await expect(page.getByText("Done. Ruken keeps nothing on this browser now.")).toBeVisible();
   expect((await context.cookies()).map((cookie) => cookie.name)).not.toContain("rk_wish_pressed");
+});
+
+test("the card shows only together with the dim behind it, never on its own before the screen has loaded", async ({
+  browser,
+  baseURL,
+}) => {
+  // As the screen is before its scripts run: the card is not drawn over its buttons with nothing dimmed.
+  const plain = await browser.newContext({
+    storageState: NOT_CONSENTED,
+    baseURL: baseURL ?? "",
+    javaScriptEnabled: false,
+  });
+  const before = await plain.newPage();
+  for (const path of ["/", "/help"]) {
+    await before.goto(path);
+    await expect(before.locator("dialog.consent"), path).toBeHidden();
+  }
+  await plain.close();
+
+  // Once they have, it asks in front of the dimmed screen.
+  const loaded = await browser.newContext({ storageState: NOT_CONSENTED, baseURL: baseURL ?? "" });
+  const page = await loaded.newPage();
+  await page.goto("/help");
+  await expect(page.locator("dialog.consent:modal")).toBeVisible();
+  await loaded.close();
 });
