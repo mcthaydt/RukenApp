@@ -29,6 +29,7 @@
   import type { Snippet } from "svelte";
   import { goto, preloadData } from "$app/navigation";
   import Icon from "../../lib/icon.svelte";
+  import { askedAhead } from "./asked-ahead.svelte.ts";
   import {
     LB,
     RB,
@@ -81,12 +82,14 @@
     });
   }
   $effect(() => {
-    // Read here so the tab it is on is the one it asks from.
+    // Read here so the tab it is on is the one it asks from, and again once a follow made here has thrown away the
+    // page asked for ahead (asked-ahead.svelte.ts).
     const here = on;
+    const asked = askedAhead.stale;
     readied = null;
     // Once the tab has come in and has nothing left to do, so asking never slows the tab itself.
     const soon = setTimeout(() => {
-      if (here === on) ready(tabFrom(here, 1) === null ? -1 : 1);
+      if (here === on && asked === askedAhead.stale) ready(tabFrom(here, 1) === null ? -1 : 1);
     }, 500);
     return () => {
       clearTimeout(soon);

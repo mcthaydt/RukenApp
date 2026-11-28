@@ -290,3 +290,34 @@ test("the credit fits the column on every screen, held either way", async ({ pag
     }
   }
 });
+
+test("a maker followed or unfollowed on Fresh shows so on Followed, though the feed asked for Followed ahead", async ({
+  page,
+}) => {
+  // The feed asks for the tab beside it ahead of a swipe or a press, and keeps that page until the move (the #447
+  // review): a follow made on a clip after that must not leave Followed showing the follows from before.
+  test.setTimeout(120_000);
+  await signUp(page);
+  const feeds = page.getByRole("navigation", { name: "Feeds" });
+  const followed = feeds.getByRole("link", { name: "Followed" });
+  const askedAhead = () => page.waitForResponse((answer) => answer.url().includes("/followed/__data.json"));
+
+  let ahead = askedAhead();
+  let clip = await feedAt(page, first.slug);
+  await ahead;
+  await badgeOf(clip).click();
+  await expect(badgeOf(clip)).toHaveAttribute("aria-pressed", "true");
+  await followed.click();
+  await expect(page).toHaveURL("/followed");
+  await expect(clipOf(page, first.slug)).toBeAttached();
+
+  ahead = askedAhead();
+  clip = await feedAt(page, first.slug);
+  await ahead;
+  await badgeOf(clip).click();
+  await expect(badgeOf(clip)).toHaveAttribute("aria-pressed", "false");
+  await followed.click();
+  await expect(page).toHaveURL("/followed");
+  await expect(page.getByText("You don't follow anyone yet.")).toBeVisible();
+  await expect(clipOf(page, first.slug)).not.toBeAttached();
+});
