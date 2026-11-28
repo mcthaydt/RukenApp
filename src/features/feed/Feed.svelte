@@ -19,6 +19,7 @@
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
   import { CURRENT_AT, clampClip, currentOf, stepFor } from "./current.ts";
+  import { keepSound, soundWanted } from "./sound.ts";
   import GoodPick from "./GoodPick.svelte";
   import FeedTop from "./FeedTop.svelte";
   import FollowBadge from "./FollowBadge.svelte";
@@ -99,7 +100,8 @@
   let warm = $state(false);
   let shape = $state<"upright" | "wide">("upright");
   let current = $state(0);
-  let soundOn = $state(false);
+  // As the person last left it, so coming back to the feed never turns the sound off by itself.
+  let soundOn = $state(soundWanted());
   // The clips a press has started, for a device that does not play a video by itself.
   let started = $state<string[]>([]);
   let autoplay = $state(false);
@@ -363,12 +365,20 @@
             // The start finished after a person moved on: the clip that is not on screen waits at its start.
             if (index !== current) video.pause();
           })
-          .catch(() => {
+          .catch((error: unknown) => {
             // A person moved on while the clip was starting: that is our own pause cutting the start short, and the
             // clip must stay paused (a retry here would play a clip nobody is looking at).
             if (index !== current) return;
+            // The start was cut short, not refused: Safari's engine does this to the clip on screen as the feed comes
+            // back from a game's page (its address is put back while it starts). The sound was never refused, so the
+            // clip starts again as it was, and only a refusal turns the sound off.
+            if (!(error instanceof DOMException && error.name === "NotAllowedError")) {
+              video.play().catch(() => undefined);
+              return;
+            }
             // The browser would not play with sound: the quiet answer is to play without it, and the mark says so.
             if (soundOn) soundOn = false;
+            keepSound(false);
             video.muted = true;
             video.play().catch(() => undefined);
           });
@@ -395,6 +405,7 @@
 
   function pressSound(slug: string): void {
     soundOn = !soundOn;
+    keepSound(soundOn);
     if (!started.includes(slug)) started = [...started, slug];
     forgetHints();
   }
