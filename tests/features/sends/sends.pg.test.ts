@@ -304,53 +304,19 @@ describe("the list", () => {
 });
 
 describe("stopping a sender", () => {
-  it("takes their games off, keeps their sends from arriving while telling them it went, and Undo lets them in", async () => {
-    const ana = await person();
-    const ben = await person();
-    const cat = await person();
-    await friends(ana.id, ben.id);
-    await friends(cat.id, ben.id);
-    const [one, two, three] = [await game(), await game(), await game()];
-    await sends.send(ana.id, one.slug, ben.handle);
-    await sends.send(ana.id, two.slug, ben.handle);
-    await sends.send(cat.id, one.slug, ben.handle);
-    const [anas] = await db().gameSend.findMany({ where: { fromId: ana.id, toId: ben.id } });
-    if (anas === undefined) throw new Error("not sent");
-
-    expect(await sends.stop(cat.id, anas.id)).toBe("not found");
-    expect(await sends.stop(ben.id, anas.id)).toBe("stopped");
-    expect(await db().gameSend.count({ where: { fromId: ana.id, toId: ben.id } })).toBe(0);
-    expect(await db().gameSend.count({ where: { fromId: cat.id, toId: ben.id } })).toBe(1);
-
-    expect(await sends.send(ana.id, three.slug, ben.handle)).toBe("sent");
-    expect(await db().gameSend.count({ where: { fromId: ana.id, toId: ben.id } })).toBe(0);
-
-    const stopped = await sends.stoppedBy(ben.id);
-    expect(stopped.map((one) => one.name)).toEqual([ana.name]);
-    const [stop] = stopped;
-    if (stop === undefined) throw new Error("not stopped");
-    expect(await sends.undo(cat.id, stop.id)).toBe("not found");
-    expect(await sends.stoppedBy(ben.id)).toHaveLength(1);
-    expect(await sends.undo(ben.id, stop.id)).toBe("undone");
-    expect(await sends.stoppedBy(ben.id)).toEqual([]);
-
-    expect(await sends.send(ana.id, three.slug, ben.handle)).toBe("sent");
-    expect((await sends.listOf(ben.id, never)).map((row) => row.slug)).toContain(three.slug);
-  });
-
-  it("is one row however often a person is stopped, and the table refuses stopping yourself", async () => {
+  // The Stop button is gone (the owner, 2026-11-28: "drop it and let unfollow do the job"): unfollowing is how a person
+  // stops a friend sending games, and a stop kept from before no longer keeps anything out.
+  it("is unfollowing, and a stop kept from before keeps nothing out", async () => {
     const ana = await person();
     const ben = await person();
     await friends(ana.id, ben.id);
-    const g = await game();
-    await sends.send(ana.id, g.slug, ben.handle);
-    const [row] = await db().gameSend.findMany({ where: { toId: ben.id } });
-    if (row === undefined) throw new Error("not sent");
+    const [one, two] = [await game(), await game()];
     await db().sendStop.create({ data: { stopperId: ben.id, stoppedId: ana.id, stoppedAt: new Date() } });
-    expect(await sends.stop(ben.id, row.id)).toBe("stopped");
-    expect(await db().sendStop.count({ where: { stopperId: ben.id } })).toBe(1);
-    await expect(
-      db().sendStop.create({ data: { stopperId: ana.id, stoppedId: ana.id, stoppedAt: new Date() } }),
-    ).rejects.toThrow();
+    expect(await sends.send(ana.id, one.slug, ben.handle)).toBe("sent");
+    expect((await sends.listOf(ben.id, never)).map((row) => row.slug)).toEqual([one.slug]);
+
+    await db().makerFollow.deleteMany({ where: { followerId: ben.id, makerId: ana.id } });
+    expect(await sends.send(ana.id, two.slug, ben.handle)).toBe("not friends");
+    expect((await sends.listOf(ben.id, never)).map((row) => row.slug)).toEqual([one.slug]);
   });
 });

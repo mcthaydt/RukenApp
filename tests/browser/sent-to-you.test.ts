@@ -1,15 +1,15 @@
 import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { clearCookiesKeepingConsent, consented } from "./support/consent.ts";
-import { givePage, makeFriends, sentTo, stopsOf, unfollow } from "./support/database.ts";
+import { givePage, makeFriends, sentTo, unfollow } from "./support/database.ts";
 import { gameWhere } from "./support/game.ts";
 import { asInstalled } from "./support/installed.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Your turn (games-sent-to-you brief): friends, people who follow each other, send each other games from the share
-// sheet; the games land on the feed's third tab, Your turn, with a dot until they are seen. The receiver removes a game,
-// or stops a sender, who is never told, and lets them through again with Undo.
+// sheet; the games land on the feed's third tab, Your turn, with a dot until they are seen. The receiver removes a game;
+// to stop a friend sending games, they unfollow them (there is no Stop).
 
 const SITE = "http://localhost:4173";
 const FROM_THE_SITE = { headers: { origin: SITE } };
@@ -118,7 +118,7 @@ async function send(page: Page, slug: string, to: string): Promise<void> {
 /** A row of the Your turn list, found by its game's name. */
 const rowOf = (page: Page, game: string) => page.locator("main.yourturn li").filter({ hasText: game });
 
-test("a friend sends a game; it lands on Your turn with a dot, is seen, opened, removed; the sender stopped and let back", async ({
+test("a friend sends a game; it lands on Your turn with a dot, is seen, opened, removed; there is no Stop", async ({
   page,
   browser,
 }, testInfo) => {
@@ -200,44 +200,15 @@ test("a friend sends a game; it lands on Your turn with a dot, is seen, opened, 
       page.getByText("Nothing yet. When a friend sends you a game, it shows up here."),
     ).toBeVisible();
 
-    // Stop: the sender sends another; the receiver asks to stop them, the card asks once, and Stop clears their games.
+    // There is no Stop: unfollowing is how a person stops a friend sending games (the owner, 2026-11-28: "drop it and
+    // let unfollow do the job"; the test below unfollows). A friend's next game simply comes.
     await send(sender.page, second.slug, "Robin Reed");
     await page.reload();
     await pageHasSettled(page);
-    const stop = rowOf(page, second.name).getByRole("button", { name: "Stop games from Sam Sender" });
-    await stop.click();
-    const card = page.getByRole("dialog", { name: "Stop games from Sam Sender? They won't be told." });
-    await expect(card).toBeVisible();
-    await showTheOwner(page, testInfo, "stop-card");
-    // Keep changes nothing.
-    await card.getByRole("button", { name: "Keep" }).click();
-    await expect(card).toBeHidden();
-    await expect(stop).toBeFocused();
-    expect(await stopsOf(receiver.number)).toBe(0);
-    await stop.click();
-    await card.getByRole("button", { name: "Stop" }).click();
-    await expect(page).toHaveURL("/your-turn");
-    await expect(
-      page.getByText("Nothing yet. When a friend sends you a game, it shows up here."),
-    ).toBeVisible();
-    expect(await stopsOf(receiver.number)).toBe(1);
-    expect(await sentTo(receiver.number)).toEqual([]);
-
-    // The sender is never told: their face still says Sent, and nothing is kept.
-    await send(sender.page, first.slug, "Robin Reed");
-    expect(await sentTo(receiver.number)).toEqual([]);
-
-    // Update: Friends who can't send you games lists them, and Undo lets them through again.
-    await page.getByRole("link", { name: "Friends who can't send you games" }).click();
-    await expect(page).toHaveURL("/your-turn/stopped");
-    await expect(page.getByText("Sam Sender")).toBeVisible();
-    await showTheOwner(page, testInfo, "people-you-stopped");
-    await page.getByRole("button", { name: "Let games from Sam Sender through again" }).click();
-    await expect(page.getByText("Every friend can send you games.")).toBeVisible();
-    expect(await stopsOf(receiver.number)).toBe(0);
-
-    await send(sender.page, first.slug, "Robin Reed");
-    expect(await sentTo(receiver.number)).toEqual([{ game: first.slug, seen: false }]);
+    await expect(rowOf(page, second.name)).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Stop games from/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /can't send you games|People you stopped/ })).toHaveCount(0);
+    await expect.poll(() => sentTo(receiver.number)).toEqual([{ game: second.slug, seen: true }]);
   } finally {
     await sender.context.close();
   }
@@ -315,11 +286,11 @@ test("signed out, Your turn keeps the top bar and says to sign in, which comes b
   await showTheOwner(page, testInfo, "your-turn-signed-out");
   await page.getByRole("link", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/sign-in\?next=%2Fyour-turn$/);
-  await page.goto("/your-turn/stopped");
-  await expect(page).toHaveURL(/\/sign-in/);
+  // The list of people stopped is gone with Stop.
+  expect((await page.request.get("/your-turn/stopped")).status()).toBe(404);
 
   // Every route that keeps something turns a signed-out person away.
-  for (const route of ["/your-turn/send", "/your-turn/seen", "/your-turn/remove", "/your-turn/stop"]) {
+  for (const route of ["/your-turn/send", "/your-turn/seen", "/your-turn/remove"]) {
     const answer = await page.request.post(route, {
       ...FROM_THE_SITE,
       form: { id: "x", game: "x", to: "x" },
@@ -341,8 +312,8 @@ test("signed in with no friends, Your turn says nothing has come yet and points 
   ).toBeVisible();
   await page.getByRole("link", { name: "See every game" }).click();
   await expect(page).toHaveURL("/");
-  // Removing or stopping a game that is not yours is refused.
-  for (const route of ["/your-turn/remove", "/your-turn/stop"]) {
+  // Removing a game that is not yours is refused.
+  for (const route of ["/your-turn/remove"]) {
     const answer = await page.request.post(route, {
       ...FROM_THE_SITE,
       form: { id: "not-yours" },
@@ -414,7 +385,7 @@ async function tabTo(page: Page, control: Locator, presses = 40): Promise<void> 
   throw new Error(`Tab never reached ${control.toString()} in ${String(presses)} presses`);
 }
 
-test("from the keyboard alone: Tab reaches a friend's face and Enter sends; Tab reaches each row, Remove and Stop, and Enter opens, removes and asks", async ({
+test("from the keyboard alone: Tab reaches a friend's face and Enter sends; Tab reaches each row and Remove, and Enter opens and removes", async ({
   page,
   browser,
 }) => {
@@ -461,7 +432,7 @@ test("from the keyboard alone: Tab reaches a friend's face and Enter sends; Tab 
     page,
     page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: /^Your turn/ }),
   );
-  // The newest row first: its game, its Remove (Enter takes it off), then the next row's Stop.
+  // The newest row first: its game, then its Remove (Enter takes it off).
   await tabTo(page, rowOf(page, second.name).getByRole("link"));
   await tabTo(
     page,
@@ -470,20 +441,6 @@ test("from the keyboard alone: Tab reaches a friend's face and Enter sends; Tab 
   await page.keyboard.press("Enter");
   await expect(rowOf(page, second.name)).toHaveCount(0);
   await expect.poll(async () => (await sentTo(receiver.number)).map((one) => one.game)).toEqual([first.slug]);
-
-  // Enter on Stop asks; Escape keeps them and gives the focus back to Stop.
-  await page.evaluate(() => {
-    document.body.focus();
-  });
-  const stop = rowOf(page, first.name).getByRole("button", { name: "Stop games from Max Mouse" });
-  await tabTo(page, stop);
-  await page.keyboard.press("Enter");
-  const card = page.getByRole("dialog", { name: "Stop games from Max Mouse? They won't be told." });
-  await expect(card).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(card).toBeHidden();
-  await expect(stop).toBeFocused();
-  expect(await stopsOf(receiver.number)).toBe(0);
 
   // Enter on a row opens its game.
   await page.evaluate(() => {
