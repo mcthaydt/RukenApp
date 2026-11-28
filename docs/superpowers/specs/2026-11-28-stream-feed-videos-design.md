@@ -137,7 +137,9 @@ Nothing here creates an account or spends money before that pick.
    key **only while that clip's `ready` mark exists** (one R2 head per request; counted in the 10× cost), so nothing is
    served for a clip that is gone or half made. Pieces are cached a year and never change (their folder is per upload);
    playlists the same. hls.js fetches with CORS, so `hls/` answers carry `access-control-allow-origin` for Ruken's own
-   site addresses only (today's `commonHeaders` sends none). A main playlist that is not ready answers 404, which is
+   site addresses only (today's `commonHeaders` sends none). They also carry `timing-allow-origin` for the same addresses, since
+   the media address is another origin and without it Resource Timing reports `transferSize` 0 for every piece, which
+   would leave the kept bandwidth (7.5) empty. A main playlist that is not ready answers 404, which is
    how a player learns to play the original instead: the feed's data does not change.
 4. **Cleanup.** `deleteClipFile` (`stills.ts`), which every removal path uses today (replace, send back, take off, a
    refused held clip) and account deletion's emptying of `clips/<public id>/` (`deletion.ts:156-157`), delete the
@@ -148,24 +150,37 @@ Nothing here creates an account or spends money before that pick.
    Chrome (computer and Android), Safari on a Mac, iPad and iPhone, DuckDuckGo, and Playwright's WebKit and Chromium;
    the browser's own HLS only where neither exists; and the original file when the streamed version is not ready (404)
    or neither works. **The starting version is the one the network can carry, not always the lightest**, so a clip
-   is never blurry for its first 2 s on fast Wi-Fi (plan audit 2, note 2): the page keeps hls.js's last measured
-   bandwidth for the visit (in memory only, nothing stored), and each clip starts on the highest version that fits under
-   it, with that bandwidth passed as hls.js's starting estimate (`abrEwmaDefaultEstimate`) and the version as
-   `startLevel`. Only the first clip of a visit, before anything is measured, or a line that measured slow, starts on
-   the 240 version. hls.js then steps up or down as the network allows. The `<video>` has `disableRemotePlayback` set,
-   which Safari needs before it opens `ManagedMediaSource` on an iPhone (plan audit 2, note 3). hls.js is loaded with a dynamic import, only
+   is never blurry for its first 2 s on fast Wi-Fi (plan audit 2, note 2). One rule decides it, used by the player and
+   the warm fetch alike (7.6): **a clip starts on the version it was last warmed at.**
+   - **The kept bandwidth** is the page's own estimate for the visit (in memory only, nothing stored), taken **only from
+     pieces that crossed the network**: Resource Timing entries for `hls/` pieces with `transferSize > 0`, bytes over
+     `responseEnd - requestStart`, averaged over the last few. A read the browser answers from its cache
+     (`transferSize` 0), such as a warmed first piece, never counts, so it cannot make a slow line look fast (plan
+     audit 3, red 2).
+   - **The warm version** is the highest version that fits under the kept bandwidth with room (its rate at most two
+     thirds of it), or the 240 one before anything is measured or when the line is slow.
+   - When a clip gets its player, it gets its warmed version as `startLevel` and the kept bandwidth as hls.js's
+     `abrEwmaDefaultEstimate`; hls.js then steps up or down as the network allows. If the criterion 13 probe shows
+     hls.js samples loads it gets from the cache, `stream-video.ts` gives hls.js a loader that leaves those loads out
+     of its estimate.
+   The `<video>` has `disableRemotePlayback` set, which Safari needs before it opens `ManagedMediaSource` on an iPhone
+   (plan audit 2, note 3). hls.js is loaded with a dynamic import, only
    when the first clip plays through it. Every place a clip plays uses the module (feed, Your turn, game page, a maker's
    page, `/about`, `/join`, the maker's steps). The start-time trick (`#t=0.001`) and the hand-made loop keep working;
    WebKit's loop bug (`quietVideo`, progress.md Flaky tests) is checked again with streamed clips.
 6. **The next 4: one warm fetch on every engine.** At most 3 clips hold a player: the one before, the one on screen and
    the one after, as today (iPhones cap how many videos decode at once). Clips 2, 3 and 4 ahead hold no player and no
    address, and a player that is not on screen loads nothing itself (hls.js `autoStartLoad: false`, `startLoad()` when
-   its clip comes on screen). For each of the 4 ahead (clips 1 to 4 after the one on screen), the page itself `fetch`es the main playlist,
-   the starting version's playlist (7.5: the one the measured bandwidth carries, or the 240 one), its init piece and
-   its first 2 s piece, with the same CORS mode and credentials hls.js uses, so they land in the browser's cache under
-   the same key and hls.js reads them from there when the clip gets its player and starts on that same version. That
-   is about 60 to 80 KB a clip at 240 and about 0.6 MB at 720, the same on WebKit and Chromium, whatever player the
-   clip later gets; on a slow line it stays at the light end. A clip that leaves the window lets go of its player as today; the warm fetches are aborted if still running.
+   its clip comes on screen). For each of the 4 ahead (clips 1 to 4 after the one on screen), the page itself
+   `fetch`es the main playlist, the warm version's playlist (7.5), its init piece and its first 2 s piece, with the
+   same CORS mode and credentials hls.js uses, so they land in the browser's cache under the same key and hls.js reads
+   them from there when the clip gets its player and starts on that same version. **Re-warming:** when the kept
+   bandwidth rises to a higher warm version, each of the 4 ahead that was warmed lower is warmed again at the new
+   version, **at most once per clip** (plan audit 3, red 1). A fall never re-warms: the clip starts from its cached
+   piece at once and hls.js steps down from there. So on the first settle of a visit the 4 ahead are warmed at 240, and
+   once the clip on screen has measured a fast line they are warmed once more at the version it carries. A warm is
+   about 60 to 80 KB a clip at 240 and about 0.6 MB at 720 (about 2.4 MB for the 4 ahead on a fast line), the same on
+   WebKit and Chromium, whatever player the clip later gets; on a slow line it stays at the light end. A clip that leaves the window lets go of its player as today; the warm fetches are aborted if still running.
    The stills window (`stillNear`) becomes 1 before and 5 after, so a still is always there before its clip.
 7. **Stills.** Unchanged: the media tool still makes them from the original.
 
@@ -176,16 +191,20 @@ Every journey runs on the repo's matrix: phone (WebKit), tablet and computer (Ch
 1. Once a clip's streamed version is ready, its requests are HLS playlists and pieces, not the original file (journey,
    reading the page's requests).
 2. With Chromium's network held to a named rate, 0.8 Mbit/s down and 150 ms latency (CDP
-   `Network.emulateNetworkConditions`), the clip on screen plays the 240 or 360 version and stalls for no more than 1 s
-   in total after its first frame (journey on the computer project; the version and stall time are printed). The
-   240 version (about 0.3 Mbit/s with sound) fits that rate with more than twice the room.
-3. After the feed settles on a clip, each of the next 4 has exactly its main playlist, starting version's playlist,
-   init piece and first piece transferred over the network, and nothing more (counted as network transfers, not reads
-   the browser answers from its cache, since the one after's player reads its main playlist again from the cache); the clip 5 ahead has nothing fetched; no more than 3 `<video>` elements
-   have a source (journey on phone and computer). The bytes fetched for the 4 ahead are printed.
-4. On an unthrottled network, from the second clip of a visit on, a swiped-to clip's first piece is the version the
-   clip before it settled on, not the 240 one unless that is where it settled (journey on phone and computer; the
-   versions are printed).
+   `Network.emulateNetworkConditions`), a person swipes through at least 3 clips from the first of a visit, each
+   played a few seconds; every one of them plays the 240 or 360 version and stalls for no more than 1 s in total after
+   its first frame (journey on the computer project; the version and stall time are printed per clip). The 240 version
+   (about 0.3 Mbit/s with sound) fits that rate with more than twice the room. This also proves cached warm pieces do
+   not lift the kept bandwidth.
+3. After the feed settles on a clip, each of the next 4 has its main playlist, warm version's playlist, init piece
+   and first piece transferred over the network, at most twice (the second only when the kept bandwidth rose to a
+   higher warm version, 7.6), and nothing more. Transfers are counted over the network, not reads the browser answers
+   from its cache (the one after's player reads its main playlist again from the cache). The clip 5 ahead has nothing
+   fetched; no more than 3 `<video>` elements have a source (journey on phone and computer, unthrottled and at the
+   criterion 2 rate). The bytes fetched for the 4 ahead are printed.
+4. Every clip starts on the version it was last warmed at (journey on phone and computer; the versions are printed).
+   On an unthrottled network, from the second clip of a visit on, that is the version the clips before it measured,
+   not the 240 one unless the line measured slow.
 4b. A swipe to the next clip shows its first moving frame within 300 ms on an unthrottled network (journey; measured and
    printed, not guessed).
 5. Every clip shows its first-frame still until it plays, as today (the existing still journeys pass unchanged).
@@ -207,7 +226,8 @@ Every journey runs on the repo's matrix: phone (WebKit), tablet and computer (Ch
     skipped and failed from the first runs, and checks the live feed with a phone profile.
 13. **Before anything is built on it**, a probe in the build's first step shows, in Playwright's Linux WebKit and
     Chromium, that `MediaSource` (or `ManagedMediaSource`) exists and hls.js plays a fixture stream, and that WebKit's
-    own HLS plays it too; its output goes in the pull request. If WebKit's own HLS does not play there, criterion 10's
+    own HLS plays it too; and whether hls.js counts a load it gets from the browser's cache in its bandwidth estimate
+    (7.5). Its output goes in the pull request. If WebKit's own HLS does not play there, criterion 10's
     native journey is dropped to a unit test of the choice and the reason is written down.
 14. Lint, typecheck, unit, pg and browser suites green; the standing overlap and gamepad journeys are untouched (no
     control is added).
