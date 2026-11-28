@@ -29,7 +29,7 @@ What a real person does, tried on the tablet profile under 4 workers, 6 times ea
 - open it at 810×1080, resize to 320×568, then open it again (with and without the first page told "caught up at the first clip", and with and without forgetting `rk_seen_hints` first);
 - open it at 810×1080 and resize to 320×568, 1080×810 or 375×667 with no reload, read 30 times straight after the resize: clip 0 at 0 every time.
 
-So 54 tries of the real-person versions never moved off the first clip. The jump came only in the old journey's own sequence. In that sequence, the probe read the old window as being on clip 0 at `scrollTop` 0 right before every `goto` (all 16 reads at the small sizes), so the reloaded page did not come back where it was left: it landed one to three clips down. SvelteKit's snapshot is not the reason either: the snapshot it kept names clip 0's key, and `returnTo` does nothing for index 0. The real cause was not found in three tries. I stopped there, as the tries rule says.
+So 54 tries of the real-person versions never moved off the first clip. The jump came only in the old journey's own sequence. In that sequence, the probe read the old window as being on clip 0 at `scrollTop` 0 right before every `goto` (all 20 reads at the small sizes), so the reloaded page did not come back where it was left: it landed one to three clips down. SvelteKit's snapshot is not the reason either: the snapshot it kept names clip 0's key, and `returnTo` does nothing for index 0. The real cause was not found in three tries. I stopped there, as the tries rule says.
 
 The new check does not hide it. If a first open ever lands past the first clip, `the feed opens on its first clip` fails with its size named, and the line and tips checks still run after it.
 
