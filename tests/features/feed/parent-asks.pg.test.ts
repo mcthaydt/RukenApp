@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { askingOf } from "../../../src/features/feed/feed-public.ts";
-import { createParentAsks, nameOf, type ParentAsks } from "../../../src/features/feed/parent-asks.ts";
+import {
+  createParentAsks,
+  nameOf,
+  readParentAskLimits,
+  STAND_IN_PARENT_ASK_LIMITS,
+  type ParentAsks,
+} from "../../../src/features/feed/parent-asks.ts";
 import { createTaste, type Taste } from "../../../src/features/feed/taste.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import type { TextMessage, Texter } from "../../../src/lib/server/text.ts";
@@ -27,6 +33,8 @@ const texter: Texter = {
   changedHands: () => Promise.resolve("cannot_say"),
 };
 let teenPersonal = true;
+/** Most tests text the same number from many teens in one test day, so the per-number limit is high unless a test lowers it. */
+let perNumberADay = 1000;
 let parents: ParentAsks;
 let taste: Taste;
 
@@ -42,6 +50,7 @@ beforeAll(async () => {
     clock,
     texting: () => ({ texter, secret: "test-only-secret" }),
     teenPersonal: () => teenPersonal,
+    limits: () => ({ perNumberADay }),
   });
   taste = createTaste({ db: db(), clock, teenPersonal: () => teenPersonal });
 });
@@ -54,6 +63,7 @@ beforeEach(() => {
   texts.length = 0;
   textsGo = true;
   teenPersonal = true;
+  perNumberADay = 1000;
 });
 
 /** A person of 15. */
@@ -142,6 +152,50 @@ describe("a teen's ask", () => {
     expect(await parents.stateOf(id)).toBe("none");
   });
 
+  it("refuses the teen's own number, and any number on an account that is not a known adult's, texting nothing", async () => {
+    const id = await teen();
+    await db().user.update({ where: { id }, data: { phoneNumber: "+13125550101" } });
+    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0101" }, ORIGIN)).toBe("own-number");
+    const other = await teen();
+    await db().user.update({ where: { id: other }, data: { phoneNumber: "+13125550102" } });
+    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0102" }, ORIGIN)).toBe("teen-number");
+    const unknownAge = await createUser(db());
+    await db().user.update({ where: { id: unknownAge }, data: { phoneNumber: "+13125550103" } });
+    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0103" }, ORIGIN)).toBe("teen-number");
+    expect(await db().parentAsk.count({ where: { teenUserId: id } })).toBe(0);
+    expect(texts).toHaveLength(0);
+    // A parent with their own adult account is a parent.
+    const adult = await createUser(db());
+    await db().user.update({
+      where: { id: adult },
+      data: { phoneNumber: "+13125550104", adultOn: new Date("2000-01-01T00:00:00Z") },
+    });
+    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0104" }, ORIGIN)).toBe("texted");
+  });
+
+  it("texts one number only so often a day, from every teen together", async () => {
+    perNumberADay = 2;
+    const busy = { ...PARENT, phone: "312 555 0177" };
+    for (let sent = 0; sent < 2; sent++) expect(await parents.ask(await teen(), busy, ORIGIN)).toBe("texted");
+    const third = await teen();
+    expect(await parents.ask(third, busy, ORIGIN)).toBe("number-busy");
+    expect(await db().parentAsk.count({ where: { teenUserId: third } })).toBe(0);
+    expect(texts).toHaveLength(2);
+    clock.advance(24 * 60 * 60 * 1000 + 1);
+    expect(await parents.ask(third, busy, ORIGIN)).toBe("texted");
+  });
+
+  it("reads the per-number limit from its secret, and anything out of shape is the stand-in", () => {
+    const lines: string[] = [];
+    const log = (line: string) => lines.push(line);
+    expect(readParentAskLimits('{"perNumberADay":4}', log)).toEqual({ perNumberADay: 4 });
+    expect(readParentAskLimits(undefined, log)).toEqual(STAND_IN_PARENT_ASK_LIMITS);
+    expect(readParentAskLimits("not json", log)).toEqual(STAND_IN_PARENT_ASK_LIMITS);
+    expect(readParentAskLimits('{"perNumberADay":0}', log)).toEqual(STAND_IN_PARENT_ASK_LIMITS);
+    expect(lines).toHaveLength(2);
+    expect(lines.join(" ")).not.toMatch(/\d/);
+  });
+
   it("is not for an adult", async () => {
     const id = await createUser(db());
     await db().user.update({ where: { id }, data: { adultOn: new Date("2010-01-01T00:00:00Z") } });
@@ -195,13 +249,15 @@ describe("the parent's answer", () => {
     expect(await parents.ask(id, PARENT, ORIGIN)).toBe("texted");
   });
 
-  it("No keeps the calm feed, and the teen may ask again", async () => {
+  it("No keeps the calm feed; the teen may ask another parent, never the same one again", async () => {
     const id = await teen();
     const token = await askAndToken(id);
     expect(await parents.answer(token, "no")).toEqual({ kind: "no" });
     expect(await parents.answer(token, "yes")).toEqual({ kind: "no" });
     expect(await taste.learningOf(id)).toBe("locked");
-    expect(await parents.ask(id, PARENT, ORIGIN)).toBe("texted");
+    expect(await parents.ask(id, PARENT, ORIGIN)).toBe("said-no");
+    expect(await parents.ask(id, { ...PARENT, phone: "312 555 0198" }, ORIGIN)).toBe("texted");
+    expect(texts).toHaveLength(2);
   });
 
   it("with teenPersonal off, a yes is kept and the page thanks the parent, but the teen stays the crowd", async () => {

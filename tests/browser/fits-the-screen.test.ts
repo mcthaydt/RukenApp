@@ -90,6 +90,32 @@ test("a teen's Your feed and Ask a parent, and a parent's page, fit the window, 
     expect(await overflow(page), path).toEqual({ page: 0, view: 0 });
     await expectViewAboveTheBar(page, path);
   }
+  const own = page.viewportSize();
+  // With a problem showing (a number that is not one), Ask a parent still fits and Text my parent stays in view, on a
+  // small phone, an iPhone SE, and a short window held sideways.
+  for (const size of [
+    { width: 320, height: 568 },
+    { width: 375, height: 667 },
+    { width: 667, height: 375 },
+  ]) {
+    const where = `/settings/feed/parent with a problem at ${String(size.width)}×${String(size.height)}`;
+    await page.setViewportSize(size);
+    await opened(page, "/settings/feed/parent");
+    // A touch screen held sideways in a browser tab asks to be turned upright instead (the owner: "we block horizontal").
+    if (await page.getByRole("dialog").filter({ hasText: "Home Screen" }).isVisible()) continue;
+    await page.getByLabel("Your first name").fill("Sam");
+    await page.getByLabel("Phone number").fill("12");
+    await page.getByRole("button", { name: "Text my parent" }).click();
+    await expect(page.getByRole("alert")).toHaveText(
+      "That phone number doesn't look right. Check it and try again.",
+    );
+    await wordsHaveSettled(page);
+    expect(await overflow(page), where).toEqual({ page: 0, view: 0 });
+    // Held sideways the bar is down the right edge, beside the view rather than under it.
+    if (size.height > size.width) await expectViewAboveTheBar(page, where);
+    await expect(page.getByRole("button", { name: "Text my parent" }), where).toBeInViewport({ ratio: 1 });
+  }
+  if (own !== null) await page.setViewportSize(own);
   for (const path of ["/settings/feed", await askedForParent(teen.number)]) {
     await opened(page, path);
     expect(await overflow(page), `${path}, waiting`).toEqual({ page: 0, view: 0 });

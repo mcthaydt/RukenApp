@@ -21,6 +21,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 const PROBLEMS = {
   "bad-name": "Type your first name, using letters only.",
   "bad-number": "That phone number doesn't look right. Check it and try again.",
+  "own-number": "Type your parent's number, not yours.",
+  "teen-number": "That number is a teen's. Type your parent's number.",
+  "said-no": "That parent already said no.",
+  "number-busy": "That number has had enough texts today. Try again tomorrow.",
   "too-many": "You've asked three times today. Try again tomorrow.",
   "not-sent": "We couldn't text that number. Check it and try again.",
 } as const;

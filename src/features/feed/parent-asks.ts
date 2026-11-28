@@ -13,6 +13,32 @@ export const ASK_DAYS = 5;
 /** How many texts a teen may send parents in a day (a rolling 24 hours). */
 export const TEXTS_A_DAY = 3;
 
+/**
+ * How many asks one phone number may be texted in a day, from every teen together. The mechanism is public; the
+ * deploy's number is not (the owner, 2026-11-22: spam numbers go private). The deploy sets it in the Worker secret
+ * PARENT_ASK_LIMITS; this stand-in, deliberately loose, is for dev, the journeys and any moment the secret is missing.
+ */
+export interface ParentAskLimits {
+  perNumberADay: number;
+}
+
+export const STAND_IN_PARENT_ASK_LIMITS: ParentAskLimits = { perNumberADay: 10 };
+
+/** Reads PARENT_ASK_LIMITS; anything missing or out of shape is the stand-in, and one line is logged without values. */
+export function readParentAskLimits(raw: string | undefined, log: (line: string) => void): ParentAskLimits {
+  if (raw === undefined || raw === "") return STAND_IN_PARENT_ASK_LIMITS;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    const perNumberADay = (parsed as { perNumberADay?: unknown } | null)?.perNumberADay;
+    if (Number.isSafeInteger(perNumberADay) && (perNumberADay as number) >= 1)
+      return { perNumberADay: perNumberADay as number };
+  } catch {
+    // Not JSON: the stand-in, as below.
+  }
+  log("PARENT_ASK_LIMITS is not in shape: the stand-in limits are used");
+  return STAND_IN_PARENT_ASK_LIMITS;
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NAME_LONGEST = 30;
 
@@ -23,7 +49,18 @@ const NAME_LONGEST = 30;
 export type AskState = "none" | "waiting" | "yes";
 
 export type AskOutcome =
-  "texted" | "bad-name" | "bad-number" | "waiting" | "has-yes" | "adult" | "too-many" | "not-sent";
+  | "texted"
+  | "bad-name"
+  | "bad-number"
+  | "own-number"
+  | "teen-number"
+  | "said-no"
+  | "number-busy"
+  | "waiting"
+  | "has-yes"
+  | "adult"
+  | "too-many"
+  | "not-sent";
 
 /** What the parent's link shows. `held` says whether a yes turns the feed on now (`teenPersonal`). */
 export type ParentPage =
@@ -38,6 +75,8 @@ export interface ParentAsksDeps {
   texting: () => { texter: Texter; secret: string };
   /** FEED_PUBLIC's `teenPersonal`: off, a yes is kept but the feed stays calm. */
   teenPersonal: () => boolean;
+  /** The private per-number limit (PARENT_ASK_LIMITS); left out, the stand-in. */
+  limits?: () => ParentAskLimits;
 }
 
 export type ParentAsks = ReturnType<typeof createParentAsks>;
@@ -123,6 +162,23 @@ export function createParentAsks(deps: ParentAsksDeps) {
           where: { teenUserId, askedAt: { gt: new Date(clock.epochMs() - DAY_MS) } },
         });
         if (today >= TEXTS_A_DAY) return "too-many" as const;
+        // A parent's number, never a teen's: not the teen's own, and not one on any account that is not a known adult's.
+        const holder = await tx.user.findUnique({
+          where: { phoneNumber: number },
+          select: { id: true, adultOn: true },
+        });
+        if (holder?.id === teenUserId) return "own-number" as const;
+        if (holder !== null && !isAdultOn(holder.adultOn, clock)) return "teen-number" as const;
+        const phoneHash = hashNumber(number, deps.texting().secret);
+        // A parent who said no is not texted again by this teen.
+        if ((await tx.parentAsk.count({ where: { teenUserId, phoneHash, answer: "no" } })) > 0)
+          return "said-no" as const;
+        // One number is texted only so often a day, from every teen together, so nobody can flood a stranger's phone.
+        const toNumber = await tx.parentAsk.count({
+          where: { phoneHash, askedAt: { gt: new Date(clock.epochMs() - DAY_MS) } },
+        });
+        if (toNumber >= (deps.limits?.() ?? STAND_IN_PARENT_ASK_LIMITS).perNumberADay)
+          return "number-busy" as const;
         // An ask that ran out of days is ended for good, so a teen only ever has one ask open.
         await tx.parentAsk.updateMany({
           where: { teenUserId, answer: null, revokedAt: null },
@@ -131,15 +187,15 @@ export function createParentAsks(deps: ParentAsksDeps) {
         const row = await tx.parentAsk.create({
           data: {
             teenUserId,
-            phoneHash: hashNumber(number, deps.texting().secret),
+            phoneHash,
             tokenHash: hashOf(token),
             askedAt: now(),
           },
           select: { id: true },
         });
-        return row.id;
+        return row;
       });
-      if (kept === "adult" || kept === "has-yes" || kept === "waiting" || kept === "too-many") return kept;
+      if (typeof kept === "string") return kept;
 
       let sent = false;
       try {
@@ -155,7 +211,7 @@ export function createParentAsks(deps: ParentAsksDeps) {
         );
       }
       if (sent) return "texted";
-      await db.parentAsk.update({ where: { id: kept }, data: { revokedAt: now() } });
+      await db.parentAsk.update({ where: { id: kept.id }, data: { revokedAt: now() } });
       return "not-sent";
     },
 

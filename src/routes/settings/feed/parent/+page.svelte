@@ -14,7 +14,12 @@
 
 <main class="card ask">
   <h1>Ask a parent</h1>
-  <p>We'll text your parent a link to say yes.</p>
+  <!-- A problem takes the line under the heading, so the form and its button still fit a small phone with it showing. -->
+  {#if form?.problem}
+    <p class="problem" role="alert">{form.problem}</p>
+  {:else}
+    <p>We'll text your parent a link to say yes.</p>
+  {/if}
   <form
     method="POST"
     use:enhance={() => {
@@ -32,9 +37,6 @@
       </label>
     </p>
     <PhoneFields countries={data.countries} country={form?.country} phone={form?.phone} />
-    {#if form?.problem}
-      <p class="problem" role="alert">{form.problem}</p>
-    {/if}
     <p class="row">
       <a class="button safe back" href="/settings/feed" aria-label="Back to your feed"><Icon name="back" /></a
       >

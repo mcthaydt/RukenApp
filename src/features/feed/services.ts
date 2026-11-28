@@ -9,7 +9,12 @@ import { pagesServices } from "../pages/pages.ts";
 import { playServices } from "../play/play.ts";
 import { askingOf, readFeedPublic, type Asking, type FeedPublic } from "./feed-public.ts";
 import { createMarks, type Marks } from "./marks.ts";
-import { createParentAsks, type ParentAsks } from "./parent-asks.ts";
+import {
+  createParentAsks,
+  readParentAskLimits,
+  type ParentAskLimits,
+  type ParentAsks,
+} from "./parent-asks.ts";
 import type { Ranker } from "./ranker.ts";
 import { createSearch, type Search } from "./search.ts";
 import { createFeedService, type FeedService } from "./service.ts";
@@ -61,6 +66,16 @@ function publicSettings(): FeedPublic {
   return settings;
 }
 
+let askLimits: ParentAskLimits | undefined;
+
+/** PARENT_ASK_LIMITS, read once per process. */
+function parentAskLimits(): ParentAskLimits {
+  askLimits ??= readParentAskLimits(optionalEnv("PARENT_ASK_LIMITS"), (line) => {
+    console.warn(line);
+  });
+  return askLimits;
+}
+
 /** The process-wide feed services, created on first use. Each neighbour is asked for only when the feed is read. */
 export function feedServices(): FeedServices {
   if (shared !== undefined) return shared;
@@ -79,6 +94,7 @@ export function feedServices(): FeedServices {
       // Asked for only when a teen asks, so the feed never builds the sign-in services just to show a clip.
       texting: () => authServices(),
       teenPersonal: () => publicSettings().teenPersonal,
+      limits: parentAskLimits,
     }),
     async listOf(userId, kind) {
       const [ids, live] = await Promise.all([
