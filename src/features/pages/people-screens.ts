@@ -13,7 +13,6 @@ export const PEOPLE_SCREENS: ReadonlySet<string> = new Set([
   "/",
   "/followed",
   "/your-turn",
-  "/your-turn/stopped",
   "/search",
   "/g/[game]",
   "/[handle=handle]",
