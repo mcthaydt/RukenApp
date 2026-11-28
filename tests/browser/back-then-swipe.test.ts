@@ -87,8 +87,21 @@ for (const back of ["browser", "arrow"] as const) {
       await expect.poll(() => clips.count()).toBeGreaterThanOrEqual(GAMES);
       // Four rounds: the owner saw it at random.
       for (let round = 1; round <= 4; round++) {
-        const want = await clips.nth(way === "down" ? 1 : 3).getAttribute("data-slug");
         await outAndBack(page, clips, back);
+        // The clip next to the one Back brought back, read now: the feed's first page is asked for again on the way
+        // back, and with many games live it can come in another order.
+        const want = await page.evaluate(
+          (step) => {
+            const all = [...document.querySelectorAll("main.feed section[data-slug]")];
+            const at = all.findIndex((one) => one.getAttribute("data-current") === "true");
+            return at < 0 ? null : (all[at + step]?.getAttribute("data-slug") ?? null);
+          },
+          way === "up" ? 1 : -1,
+        );
+        expect(
+          want,
+          `round ${String(round)}: a clip on each side of the one Back brought back`,
+        ).not.toBeNull();
         await drag(page, cdp, way);
         await expect(page).toHaveURL("/");
         await expect(
