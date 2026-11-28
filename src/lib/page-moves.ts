@@ -206,19 +206,24 @@ export function slideWhile(arrived: Promise<unknown>, game: string | null = null
     // While a move slides, the browser draws pictures of the pages over the page itself, and a finger that comes down
     // lands on those pictures, so a swipe made then moved nothing (the owner, 2026-11-28, on a Galaxy: Back from a
     // game, then a swipe down, misbehaves at random). A finger on the screen ends the slide at once, so the swipe it
-    // starts moves the page that is there. A trackpad or mouse wheel lands on them the same way, so it ends the slide too.
+    // starts moves the page that is there. A trackpad or mouse wheel turned up or down lands on them the same way, so
+    // it ends the slide too. A sideways one is left alone: a two-finger swipe across the trackpad is how the tabs
+    // change, and the rest of that same swipe must not cut short the slide it started.
     const fingerDown = () => {
       slide.skipTransition();
     };
+    const wheelTurned = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) slide.skipTransition();
+    };
     window.addEventListener("touchstart", fingerDown, { capture: true, passive: true });
     window.addEventListener("pointerdown", fingerDown, { capture: true, passive: true });
-    window.addEventListener("wheel", fingerDown, { capture: true, passive: true });
+    window.addEventListener("wheel", wheelTurned, { capture: true, passive: true });
     void slide.finished
       .catch(() => undefined)
       .then(() => {
         window.removeEventListener("touchstart", fingerDown, { capture: true });
         window.removeEventListener("pointerdown", fingerDown, { capture: true });
-        window.removeEventListener("wheel", fingerDown, { capture: true });
+        window.removeEventListener("wheel", wheelTurned, { capture: true });
         unname(old, naming);
         unname(fresh, naming);
         endWait(naming);
