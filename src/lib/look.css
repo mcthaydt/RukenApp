@@ -3159,6 +3159,14 @@ a.sheet.fix {
   color: var(--chalk);
 }
 
+/* Test play is a second way forward too: on its own line under the send, so the blue button keeps the row's whole width
+   on a small phone. */
+.live a.testplay {
+  display: flex;
+  width: fit-content;
+  margin-top: 1.25rem;
+}
+
 /* The maker's On/Off switch for the player count (under the game laid out). One button the whole width of its line: the
    words on the left, the chip on the right, and the chip says the state in words as well as by its fill, so it is not read
    by colour alone. */

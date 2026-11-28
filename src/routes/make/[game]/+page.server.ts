@@ -160,6 +160,9 @@ export const load: PageServerLoad = async (event) => {
       // Asked on a screen of its own, because it cannot be undone.
       takeOffAddress: `/make/${game.slug}/take-off`,
       pageAddress: `/g/${game.slug}`,
+      // The maker's way to play it: the files waiting for review, else the live copy (before launch the game's own page
+      // shows Wishlist where Play goes, for its maker too).
+      testPlay: game.testPlay ? `/make/${game.slug}/play` : null,
       backdrop,
       game: liveLaidOut(game),
       showsPlayerCount: game.showsPlayerCount,

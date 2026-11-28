@@ -23,13 +23,14 @@ describe("testPlayPullId", () => {
     ).toBe("new");
   });
 
-  it("a live game with nothing new, or only a video or rating waiting, has nothing to try", () => {
+  it("a live game with nothing new, or only a video or rating waiting, tries its live copy", () => {
+    // Before launch its own page shows Wishlist where Play goes, its maker's too, so test play is the maker's way in.
     expect(
       testPlayPullId({ state: "live", pendingPullId: null, livePullId: "old", newestPullId: "old" }),
-    ).toBeNull();
+    ).toBe("old");
     expect(
       testPlayPullId({ state: "live", pendingPullId: "old", livePullId: "old", newestPullId: "old" }),
-    ).toBeNull();
+    ).toBe("old");
   });
 
   it("a game taken off, taken down or thrown away is never test-played", () => {

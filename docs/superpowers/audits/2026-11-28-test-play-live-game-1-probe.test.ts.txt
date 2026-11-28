@@ -1,0 +1,90 @@
+// Review probe for PR #458 (not committed to the PR): pad reaches Test play on Your games and Live, A opens it,
+// before and after launch, for a maker with no membership.
+import { expect, test } from "@playwright/test";
+import pg from "pg";
+import { signInAs } from "./support/account.ts";
+import { userIdOf } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
+import { atLaunch, beforeLaunch } from "./support/launch.ts";
+import { wordsHaveSettled } from "./support/look.ts";
+import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/pad.ts";
+
+test("probe 458: pad, launch, no membership", async ({ page, browser, request, context }) => {
+  test.setTimeout(300_000);
+  const game = await addGame(browser, request);
+  const client = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });
+  await client.connect();
+  const id = await userIdOf(game.maker.number);
+  const rows = await client.query('select count(*)::int as n from "PremiumMembership" where "userId" = $1', [id]);
+  await client.end();
+  expect(rows.rows[0].n).toBe(0);
+  await plugInPad(page);
+  await signInAs(page, game.maker.number, game.maker.password);
+  for (const when of ["after", "before"]) {
+    if (when === "before") await beforeLaunch(context);
+    for (const path of ["/make", `/make/${game.slug}`]) {
+      await page.goto(path);
+      await wordsHaveSettled(page);
+      await padReachesEverything(page);
+      const link = path === "/make"
+        ? page.getByRole("link", { name: `Test play ${game.name}` })
+        : page.getByRole("link", { name: "Test play", exact: true });
+      await expect(link).toBeVisible();
+      // Walk the pad down until Test play has the focus, then A.
+      let found = false;
+      await page.goto(path);
+      await wordsHaveSettled(page);
+      for (let step = 0; step < 30 && !found; step += 1) {
+        found = await link.evaluate((one) => one === document.activeElement);
+        if (!found) await pressPad(page, step < 15 ? PAD.down : PAD.right);
+      }
+      expect(found, `${when} launch: pad reaches Test play on ${path}`).toBe(true);
+      await pressPad(page, PAD.a);
+      await expect(page).toHaveURL(`/make/${game.slug}/play`);
+      await expect(page.locator(".teststrip")).toBeVisible();
+    }
+  }
+  await atLaunch(context);
+});
+
+test("probe 458: Test play's box against every other control at three sizes", async ({ page, browser, request, context }) => {
+  test.setTimeout(300_000);
+  const game = await addGame(browser, request);
+  await signInAs(page, game.maker.number, game.maker.password);
+  const out: string[] = [];
+  for (const when of ["after", "before"]) {
+    if (when === "before") await beforeLaunch(context);
+    for (const size of [[320, 568], [375, 667], [667, 375]]) {
+      await page.setViewportSize({ width: size[0], height: size[1] });
+      for (const path of ["/make", `/make/${game.slug}`]) {
+        await page.goto(path);
+        await wordsHaveSettled(page);
+        const worst = await page.evaluate(() => {
+          const all = [...document.querySelectorAll("a[href], button")].filter((e) => {
+            const r = e.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== "hidden";
+          });
+          const tp = all.filter((e) => /Test play/.test(e.textContent ?? "") || /Test play/.test(e.getAttribute("aria-label") ?? ""));
+          let max = 0;
+          let what = "";
+          for (const t of tp) {
+            const a = t.getBoundingClientRect();
+            for (const o of all) {
+              if (o === t || o.contains(t) || t.contains(o)) continue;
+              const b = o.getBoundingClientRect();
+              const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+              const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+              if (w > 0 && h > 0 && w * h > max) { max = w * h; what = (o.textContent ?? "").trim().slice(0, 30); }
+            }
+          }
+          const r = tp[0]?.getBoundingClientRect();
+          return { count: tp.length, max, what, h: r?.height ?? 0, w: r?.width ?? 0 };
+        });
+        out.push(`${when} ${size.join("x")} ${path}: testplay=${worst.count} ${worst.w.toFixed(0)}x${worst.h.toFixed(0)} overlap=${worst.max.toFixed(1)}px² ${worst.what}`);
+        if (path !== "/make") await page.screenshot({ path: `/tmp/claude-0/shots/${when}-${size.join("x")}-live.png`, fullPage: true });
+      }
+    }
+  }
+  await atLaunch(context);
+  console.log(out.join("\n"));
+});
