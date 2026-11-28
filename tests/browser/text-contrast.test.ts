@@ -302,7 +302,11 @@ async function expectEveryWordReadable(page: Page, paths: readonly string[], whe
     const answer = await page.goto(path);
     await pageHasSettled(page);
     // A screen that answers "We can't find that page" has none of its own words to read; only the missing page should.
-    expect.soft(answer?.status(), `${path}, ${when}: found`).toBe(path === "/no-such-page-here" ? 404 : 200);
+    // A screen read a second time (before launch, after after) may come back unchanged, 304, from the browser's cache.
+    const found = path === "/no-such-page-here" ? [404] : [200, 304];
+    expect
+      .soft(found, `${path}, ${when}: found (answered ${String(answer?.status())})`)
+      .toContain(answer?.status());
     // The feed's clips come in after the page itself: its words are read once the first clip is the current one.
     if (path === "/")
       await expect(page.locator("section[data-slug][data-current='true']").first()).toBeAttached();
