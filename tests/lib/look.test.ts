@@ -387,7 +387,7 @@ describe("screens wear the look and nothing of their own", () => {
     "hero",
     "heroname",
     "fact",
-    "joinlink",
+    "join",
     "playtile",
     "watch",
     "pickers",

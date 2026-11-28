@@ -4153,8 +4153,8 @@ main.gamepage {
   text-decoration: none;
 }
 
-/* Play and what it costs, said before the press: the one blue tile, with Join as the last word of the cost for someone who
-   is not a member. */
+/* Play and what it costs, said before the press: the one blue tile, with Join as a button of its own under the cost for
+   someone who is not a member. */
 .gamepage .playtile {
   display: flex;
   flex-direction: column;
