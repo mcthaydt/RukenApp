@@ -156,7 +156,7 @@ export const MORE: readonly Section[] = [
     links: [{ words: "Watch the feed", href: "/" }],
     picture: {
       src: "/about/feed.jpg",
-      alt: "The Ruken feed on a phone: a game playing, with its name and a Play button",
+      alt: "The Ruken feed on a phone: Floor Fifty playing, with its name, a Play button, Like, Save and Repost, and the faces of friends who liked it",
     },
   },
   {
@@ -184,13 +184,21 @@ export const SPLIT = {
 } as const;
 
 /** The two cards at the foot, one per audience, each with its one button. */
-/** Each closing card sits on a still from Floor Fifty, blurred and dimmed, as Live sits on its own clip. */
+/**
+ * Each closing card sits on a photo of friends doing what the card asks: playing on a phone together, and making a game
+ * together (the owner, 2026-11-28: "realistic but artistic like something from Soho House"; "one is someone working with
+ * friends, the other is someone playing on their phone with friends"). Made with fal.ai; the owner picked both.
+ */
 export const CLOSING: readonly { heading: string; button: Link; glow: string }[] = [
-  { heading: "Want to play?", button: { words: "Watch the feed", href: "/" }, glow: "/about/play-glow.jpg" },
+  {
+    heading: "Want to play?",
+    button: { words: "Watch the feed", href: "/" },
+    glow: "/about/friends-playing.jpg",
+  },
   {
     heading: "Made a game?",
     button: { words: "Put your game on Ruken", href: "/make" },
-    glow: "/about/make-glow.jpg",
+    glow: "/about/friends-making.jpg",
   },
 ];
 
