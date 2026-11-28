@@ -5514,6 +5514,19 @@ header:has(+ main.about) {
   transform: translateX(-50%);
 }
 
+/* A note that is only a wait (the maker's "Looking up branches") takes no room of its own: its spinner hangs at the
+   right end of the line above, so nothing below moves when the wait ends and a tap aimed a moment before still lands. */
+.note[aria-busy="true"] {
+  position: relative;
+  height: 0;
+  margin: 0;
+}
+.note[aria-busy="true"] > .spinner {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+
 /* The spinner. Owner, 2026-11-22: "let's use a spinner too, or at least some obvious indication that something is
    loading". It is the one round thing besides the circles behind Live and a person's photo. */
 .spinner,
