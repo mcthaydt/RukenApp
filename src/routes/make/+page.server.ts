@@ -3,19 +3,23 @@ import { signedInOnly } from "../../features/accounts/accounts.ts";
 import { acceptanceWords, GameError, gamesServices } from "../../features/games/games.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
-// The maker's area: their games, each with where it stands in words. Signed out, to sign-in and back. A connection to
-// GitHub that could not be finished and has no question to go back to (a state that did not open) says so here.
+// The maker's area: their games, each with where it stands in words. Signed out, what putting a game on Ruken gives a
+// maker, with Join and Sign in that come back here (the owner, 2026-11-28: the plus in the bar "does nothing when you're
+// signed out"). A connection to GitHub that could not be finished and has no question to go back to (a state that did
+// not open) says so here.
 
 /** The one-time note that a game was thrown away: set by the action, read and cleared by the next look at Your games. */
 const THROWN_AWAY = "thrown-away";
 
 export const load: PageServerLoad = async ({ locals, url, cookies }) => {
-  const { userId } = signedInOnly(locals.caller, url);
+  if (locals.caller.kind !== "user") return { signedOut: true as const };
+  const { userId } = locals.caller;
   const games = gamesServices();
   // Said once: the note is gone the moment it is read, so a reload shows the plain list.
   const thrown = cookies.get(THROWN_AWAY) ?? null;
   if (thrown !== null) cookies.delete(THROWN_AWAY, { path: "/make" });
   return {
+    signedOut: false as const,
     // Each game's picture is its wide video's first frame, or nothing until it has one.
     games: (await games.service.gamesOf(userId)).map((game) => ({
       ...game,

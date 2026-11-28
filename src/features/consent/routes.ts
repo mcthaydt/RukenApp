@@ -21,6 +21,9 @@ const OPEN: readonly string[] = [
   // The Your turn tab only reads, so a swipe or RB from Followed lands on it, not the cookie notice; everything under it
   // that keeps something is gated below.
   "/your-turn",
+  // The plus in the bar lands here: signed out it only says what Ruken gives a maker, so it opens without a yes, as Your
+  // turn does; every screen under it that keeps something is gated below.
+  "/make",
   "/api/still/[...key]",
   "/help",
   "/help/get-your-game-on-ruken",
@@ -60,7 +63,10 @@ export const GATED: readonly string[] = [
   "/api/feed/marks",
   "/me",
   "/settings",
-  "/make",
+  "/make/[game]",
+  "/make/github",
+  "/make/new",
+  "/make/page",
   // More like this, Less like this and Good pick, from a clip: kept about a signed-in person only.
   "/api/feed/taste",
   "/api/feed/good-pick",

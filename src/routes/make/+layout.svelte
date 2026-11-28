@@ -13,7 +13,9 @@
 
   /** The one more link in the bar: where the maker goes to stop for now, or to their account. */
   const more = $derived.by(() => {
-    if (page.url.pathname === "/make") return { href: "/me", words: "Your account" };
+    // Signed out there is no account to go to: the screen's own Join and Sign in are the ways on.
+    if (page.url.pathname === "/make")
+      return page.data.signedOut === true ? null : { href: "/me", words: "Your account" };
     // A game that was sent already has nothing unfinished: what is changed is saved as it is changed.
     if (page.data.changing === true) return null;
     // A question with no counter is an answer being changed (a live game's name, the websites): there is nothing

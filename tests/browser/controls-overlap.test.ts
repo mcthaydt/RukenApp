@@ -32,6 +32,7 @@ const SIGNED_OUT = [
   "/followed",
   "/your-turn",
   "/search",
+  "/make",
   "/about",
   "/privacy",
   "/terms",

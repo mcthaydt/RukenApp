@@ -69,7 +69,7 @@ test.describe("signed out", () => {
 
   test("no screen scrolls the page, the bar covers nothing, and Cookies fits", async ({ page }) => {
     // Sign in, Join and Forgot password are forms taller than a small phone: they scroll inside their view.
-    for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/cookies", "/your-turn"]) {
+    for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/cookies", "/make", "/your-turn"]) {
       await opened(page, path);
       expect((await overflow(page)).page, path).toBe(0);
       await expectViewAboveTheBar(page, path);
