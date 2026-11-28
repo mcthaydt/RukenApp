@@ -52,11 +52,12 @@
         {#if data.reposted}<a class="go" href="/me/reposts">Your reposts</a>{/if}
       </li>
     {/if}
-    <li><a class="go" href="/me/name">Your name</a></li>
     <li><a class="go" href="/make">{data.makesGames ? "Your games" : "Add your games to Ruken"}</a></li>
     <li><a class="go" href="/settings/feed">Your feed</a></li>
     <li><a class="go" href="/me/password">Change password</a></li>
     <li><a class="go" href="/me/computers">Your computers</a></li>
+    <!-- After Your computers, where it shares a line on a short phone, so the account takes no line more. -->
+    <li><a class="go" href="/me/name">Your name</a></li>
     <li><a class="go" href="/about">What is Ruken?</a></li>
   </ul>
   <!-- Side by side, so the whole account fits on a phone with no scrolling (the owner, 2026-11-24); the row's gap keeps

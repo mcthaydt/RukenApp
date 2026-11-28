@@ -342,7 +342,8 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(page.getByRole("status")).toHaveText("Saved. Your page is live.");
   await expect(page.getByRole("link", { name: /^Links/ })).toContainText("No links yet");
   await page.goto(`/${moved}`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(moved);
+  // The page made again keeps the name she had; only the links, the photo and the counts went.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Night Owl");
 });
 
 test("a page goes when its account is deleted, after the 14 days", async ({ page }) => {

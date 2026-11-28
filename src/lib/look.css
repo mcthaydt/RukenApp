@@ -595,6 +595,11 @@ form > * + * {
     grid-column: 1 / -1;
   }
 
+  /* Six links (Your name among them) sit two to a line from the first, so they still take three lines. */
+  .card:has(.side-by-side) .sidelinks:has(> li:nth-child(6)):not(:has(> li:nth-child(7))) li:first-child {
+    grid-column: auto;
+  }
+
   .card:has(.side-by-side) .sidelinks .go {
     line-height: 1.15;
   }
