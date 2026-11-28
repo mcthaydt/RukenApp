@@ -161,8 +161,11 @@ Nothing here creates an account or spends money before that pick.
 Expected duration: option A about 3 to 4 sessions; B or C about 2. Budget: the monthly cost of the picked option, as
 in section 4; a material change (for example real traffic far above the assumptions) is reported to the owner.
 
-## 10. Open decisions
+## 10. Decisions
 
-- D1: which option (A, B or C), with its monthly cost. Recommended: A.
-- D2: `hls.js` as a new package. Recommended: yes (needed for Firefox and some computers with any option).
-- D3: streaming the clips already stored. Recommended: yes.
+- 2026-11-28 08:09 UTC, the owner, on a card: "Our own, on Cloudflare" (option A), whose text read: "About $5/mo at launch, $30-50 at
+  10x. Adds Cloudflare Containers (Workers Paid, $5/mo) and the hls.js package, and converts the clips already
+  stored." This settles D1 (option A and its monthly cost), D2 (`hls.js` as a new package) and D3 (streaming the clips
+  already stored), within the boundaries of this spec. The Workers Paid plan, if the account is not on it, and the
+  deploy token's Containers permission go to the owner as CLI commands when the build needs them.
+- Sections 7.1 and 7.2 stand as written for option A; the notes on B and C are kept as a record only.
