@@ -458,6 +458,22 @@
   /** The keys a browser scrolls a page with. */
   const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
 
+  /**
+   * The control a shortcut presses on the clip on screen (the owner, 2026-11-22): Enter plays (or wishlists, before
+   * launch), I opens the game's page, M turns the sound on or off, R reposts. Pressing the control itself means a key
+   * does exactly what a tap does, sign-in and the cookie yes included.
+   */
+  function shortcutOf(key: string): HTMLElement | null {
+    const clip = sections[current] ?? undefined;
+    const pick = (where: Element | Document | undefined, selector: string) =>
+      where?.querySelector<HTMLElement>(selector) ?? null;
+    if (key === "Enter") return pick(clip, ".band .play");
+    if (key === "i" || key === "I") return pick(clip, ".gamelink");
+    if (key === "r" || key === "R") return pick(clip, 'button[aria-label="Repost"]');
+    if (key === "m" || key === "M") return pick(document, "button.sound");
+    return null;
+  }
+
   function onKey(event: KeyboardEvent): void {
     forgetHints();
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -468,6 +484,15 @@
     const sheet = document.querySelector("dialog[open]");
     if (sheet !== null) {
       if (SCROLL_KEYS.has(event.key) && (target === null || !sheet.contains(target))) event.preventDefault();
+      return;
+    }
+    const control = shortcutOf(event.key);
+    if (control !== null) {
+      // A field keeps its letters, and a focused link or button keeps Enter for itself.
+      if (target?.closest("input, textarea, select, [contenteditable]") != null) return;
+      if (event.key === "Enter" && target?.closest("a, button, summary") != null) return;
+      event.preventDefault();
+      control.click();
       return;
     }
     const step = stepFor(event.key, event.shiftKey);
