@@ -22,7 +22,7 @@
     </ul>
     <div class="ways">
       <a class="button" href="/sign-up?next=%2Fmake">Join Ruken</a>
-      <a class="quiet" href="/sign-in?next=%2Fmake">Sign in</a>
+      <a class="go" href="/sign-in?next=%2Fmake">Sign in</a>
     </div>
   </main>
 {:else}

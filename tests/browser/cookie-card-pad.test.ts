@@ -15,8 +15,9 @@ type Answer = (typeof ANSWERS)[number];
 const isAnswer = (name: string | null): name is Answer =>
   (ANSWERS as readonly (string | null)[]).includes(name);
 
-/** Each screen a stranger can open first, and the place the question stands on it. */
-const SCREENS = ["/followed", "/your-turn", "/search", "/make", "/help", "/privacy", "/sign-in"];
+/** Each screen a stranger can open first that shows the question (not What we keep, nor the maker's pitch, whose Join and
+ * Sign in ask it on their own screen), and the place it stands on it. */
+const SCREENS = ["/followed", "/your-turn", "/search", "/help", "/sign-in"];
 
 test.use({ storageState: NOT_CONSENTED });
 test.beforeEach(async ({ page }) => {

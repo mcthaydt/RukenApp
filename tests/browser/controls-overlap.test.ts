@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
-import { CONSENTED_STATE, consented } from "./support/consent.ts";
+import { CONSENTED_STATE, consented, NOT_CONSENTED } from "./support/consent.ts";
 import {
   fillAnswers,
   followById,
@@ -265,6 +265,23 @@ test.describe("signed out", () => {
     await expectNothingOverlaps(page, paths, "after launch");
     await beforeLaunch(context);
     await expectNothingOverlaps(page, paths, "before launch");
+    await atLaunch(context);
+  });
+});
+
+// Before the cookie question is answered, the maker's pitch (the plus, signed out): the notice must not sit over Join
+// Ruken or Sign in. Other screens before a yes are their own work.
+test.describe("signed out, before a yes to cookies", () => {
+  test.use({ storageState: NOT_CONSENTED });
+
+  test("nothing sits over the maker's pitch, upright or sideways, before launch and after", async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(240_000);
+    await expectNothingOverlaps(page, ["/make"], "after launch, before a yes");
+    await beforeLaunch(context);
+    await expectNothingOverlaps(page, ["/make"], "before launch, before a yes");
     await atLaunch(context);
   });
 });
