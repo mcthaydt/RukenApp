@@ -1,0 +1,232 @@
+import { expect, test, type Page } from "@playwright/test";
+import { pageHasSettled } from "./support/account.ts";
+import { NOT_CONSENTED } from "./support/consent.ts";
+import { addGame } from "./support/game.ts";
+import { PAD, plugInPad, pressPad } from "./support/pad.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+// Review probe for #467 (not committed to the app; kept as the audit's evidence).
+test.use({ storageState: NOT_CONSENTED });
+let slug: string;
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await forgetRateLimits();
+  slug = (await addGame(browser, request, { free: true })).slug;
+});
+test.beforeEach(async () => forgetRateLimits());
+
+const card = (page: Page) => page.locator("dialog.consent");
+const focusInfo = (page: Page) =>
+  page.evaluate(() => {
+    const a = document.activeElement as HTMLElement;
+    return {
+      tag: a?.tagName,
+      text: (a?.getAttribute("aria-label") ?? a?.textContent ?? "").trim().slice(0, 30),
+      inCard: a?.closest("dialog.consent") !== null,
+      ring: a?.matches(":focus-visible") ?? false,
+      outline: getComputedStyle(a).outlineStyle + " " + getComputedStyle(a).boxShadow.slice(0, 40),
+    };
+  });
+
+test("sideways phone in a browser tab: what is in front, the upright notice or the cookie card", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone");
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.goto("/help");
+  await pageHasSettled(page);
+  await expect(page.locator(".upright")).toBeVisible();
+  const top = await page.evaluate(() => {
+    const d = document.querySelector("dialog.consent")!.getBoundingClientRect();
+    const hit = document.elementFromPoint(d.left + d.width / 2, d.top + 20);
+    return {
+      cardModal: document.querySelector("dialog.consent")?.matches(":modal"),
+      hitInCard: hit?.closest("dialog.consent") !== null,
+      hitInUpright: hit?.closest(".upright") !== null,
+    };
+  });
+  console.log("SIDEWAYS-TAB", JSON.stringify(top));
+  await page.screenshot({ path: `/tmp/claude-0/probe-sideways-tab-${info.project.name}.png` });
+});
+
+test("keyboard: first Tab lands on I agree, Tab stays in the card, Escape is Not now, then the page", async ({
+  page,
+}, info) => {
+  await page.goto("/help");
+  await pageHasSettled(page);
+  await expect(card(page)).toBeVisible();
+  console.log(info.project.name, "KB load", JSON.stringify(await focusInfo(page)));
+  const seen: string[] = [];
+  for (let i = 0; i < 5; i += 1) {
+    await page.keyboard.press("Tab");
+    const f = await focusInfo(page);
+    seen.push(`${f.text}|${f.inCard}|${f.ring}`);
+  }
+  console.log(info.project.name, "KB tabs", JSON.stringify(seen));
+  await page.keyboard.press("Escape");
+  await expect(card(page)).toHaveCount(0);
+  await page.keyboard.press("Tab");
+  console.log(info.project.name, "KB after Esc", JSON.stringify(await focusInfo(page)));
+});
+
+test("Escape pressed with no click first (Chrome close watcher) still counts as Not now", async ({
+  page,
+}, info) => {
+  await page.goto("/");
+  await pageHasSettled(page);
+  await expect(card(page)).toBeVisible();
+  await page.keyboard.press("Escape");
+  const after = await page.evaluate(() => ({
+    mounted: document.querySelector("dialog.consent") !== null,
+    open: document.querySelector("dialog.consent")?.hasAttribute("open") ?? null,
+  }));
+  console.log(info.project.name, "ESC-FIRST", JSON.stringify(after));
+  // A second Escape after the page was pressed.
+});
+
+test("gamepad: the pad reaches I agree, B is Not now, and then the pad moves on the page", async ({
+  page,
+}, info) => {
+  await plugInPad(page);
+  await page.goto("/help");
+  await pageHasSettled(page);
+  await expect(card(page)).toBeVisible();
+  const seen: string[] = [];
+  for (const b of [PAD.down, PAD.down, PAD.right, PAD.up]) {
+    await pressPad(page, b);
+    const f = await focusInfo(page);
+    seen.push(`${f.text}|${f.inCard}|${f.ring}`);
+  }
+  console.log(info.project.name, "PAD moves", JSON.stringify(seen));
+  await pressPad(page, PAD.b);
+  await expect(card(page)).toHaveCount(0);
+  await expect(page).toHaveURL(/\/help$/);
+  await pressPad(page, PAD.down);
+  console.log(info.project.name, "PAD after B", JSON.stringify(await focusInfo(page)));
+  // Fresh visit: A on I agree.
+  await page.goto("/help");
+  await pageHasSettled(page);
+  await pressPad(page, PAD.down);
+  const f = await focusInfo(page);
+  console.log(info.project.name, "PAD 2nd visit first move", JSON.stringify(f));
+  if (f.text === "I agree") {
+    await pressPad(page, PAD.a);
+    await expect(card(page)).toHaveCount(0);
+    await pressPad(page, PAD.down);
+    console.log(info.project.name, "PAD after agree", JSON.stringify(await focusInfo(page)));
+  }
+});
+
+test("touch or mouse: a press on the dim does nothing, Not now frees the page, no ring after a tap", async ({
+  page,
+}, info) => {
+  await page.goto("/help");
+  await pageHasSettled(page);
+  await expect(card(page)).toBeVisible();
+  const url = page.url();
+  // Press where a page control sits behind the dim (the bar's first link).
+  const behind = await page
+    .getByRole("navigation", { name: "Ruken" })
+    .getByRole("link")
+    .first()
+    .boundingBox();
+  if (behind) {
+    if (info.project.name === "computer") await page.mouse.click(behind.x + 5, behind.y + 5);
+    else await page.touchscreen.tap(behind.x + 5, behind.y + 5);
+  }
+  console.log(info.project.name, "press on dim", page.url() === url, await card(page).count());
+  await page.getByRole("button", { name: "Not now" }).click();
+  await expect(card(page)).toHaveCount(0);
+  console.log(info.project.name, "after Not now tap", JSON.stringify(await focusInfo(page)));
+  await page.getByRole("navigation", { name: "Ruken" }).getByRole("link").first().click();
+  await expect(page).not.toHaveURL(url);
+});
+
+test("a press that needs the yes opens the card again: focus on I agree, ring only for keys", async ({
+  page,
+}, info) => {
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await page.getByRole("button", { name: "Not now" }).click();
+  await expect(card(page)).toHaveCount(0);
+  await page.locator('section[data-current="true"]').getByRole("button", { name: /^Like/ }).first().click();
+  await expect(card(page)).toBeVisible();
+  console.log(
+    info.project.name,
+    "REASK by tap",
+    JSON.stringify(await focusInfo(page)),
+    await card(page).evaluate((d) => d.matches(":modal")),
+  );
+  await page.screenshot({ path: `/tmp/claude-0/probe-reask-${info.project.name}.png` });
+  const backdrop = await card(page).evaluate(
+    (d) =>
+      getComputedStyle(d, "::backdrop").backgroundColor +
+      " | " +
+      getComputedStyle(d).backgroundColor +
+      " | glass=" +
+      document.documentElement.hasAttribute("data-glass"),
+  );
+  console.log(info.project.name, "backdrop", backdrop);
+  await page.getByRole("button", { name: "I agree" }).click();
+  await expect(card(page)).toHaveCount(0);
+  console.log(
+    info.project.name,
+    "REASK after agree, liked?",
+    await page
+      .locator('section[data-current="true"]')
+      .getByRole("button", { name: /^Like/ })
+      .first()
+      .getAttribute("aria-pressed"),
+  );
+});
+
+test("help (plain page): the card is solid, no glass", async ({ page }, info) => {
+  await page.goto("/help");
+  await pageHasSettled(page);
+  const look = await card(page).evaluate(
+    (d) =>
+      getComputedStyle(d).backgroundColor +
+      " | " +
+      getComputedStyle(d).backdropFilter +
+      " | glass=" +
+      document.documentElement.hasAttribute("data-glass"),
+  );
+  console.log(info.project.name, "PLAIN look", look);
+});
+test("on the feed, with the card in front, do keys, the pad, the wheel or a swipe still move what is behind?", async ({
+  page,
+}, info) => {
+  await plugInPad(page);
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await expect(card(page)).toBeVisible();
+  const current = () => page.locator('section[data-current="true"]').getAttribute("data-slug");
+  const tab = () => page.evaluate(() => location.pathname);
+  const muted = () =>
+    page.evaluate(
+      () =>
+        (document.querySelector('section[data-current="true"] video') as HTMLVideoElement | null)?.muted ??
+        null,
+    );
+  const log: Record<string, unknown> = { start: await current(), muted: await muted() };
+  await page.keyboard.press("ArrowDown");
+  await page.waitForTimeout(800);
+  log.afterArrowDown = await current();
+  await page.keyboard.press("m");
+  await page.waitForTimeout(300);
+  log.mutedAfterM = await muted();
+  await pressPad(page, PAD.down);
+  await page.waitForTimeout(800);
+  log.afterPadDown = await current();
+  await pressPad(page, PAD.rb);
+  await page.waitForTimeout(800);
+  log.afterRB = await tab();
+  if (info.project.name === "computer") {
+    await page.mouse.move(200, 200);
+    for (let i = 0; i < 3; i += 1) await page.mouse.wheel(0, 400);
+    await page.waitForTimeout(1000);
+    log.afterWheel = await current();
+  }
+  log.cardStill = await card(page).count();
+  console.log(info.project.name, "FEED-BEHIND", JSON.stringify(log));
+});

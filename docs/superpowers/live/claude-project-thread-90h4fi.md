@@ -1,7 +1,7 @@
 # Live state: claude/project-thread-90h4fi
 
-- Current task: lane 2 review of #467 (cookie card in front) at d2cf9c0
-- Last commit: d2cf9c03
-- Next step: run lint/typecheck/unit, the overlap and consent journeys, then probe input devices and the sideways tab
+- Current task: lane 2 review of #467 at 12db736: FAIL 2 red, audit written
+- Last commit: 29662d74
+- Next step: commit the audit, post "12db736 FAIL: 2 red" on #467, report
 - Open decisions: none
-- Updated: 2026-11-28 14:03 UTC
+- Updated: 2026-11-28 14:22 UTC
