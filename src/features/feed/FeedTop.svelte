@@ -27,9 +27,19 @@
 
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { goto } from "$app/navigation";
+  import { goto, preloadData } from "$app/navigation";
   import Icon from "../../lib/icon.svelte";
-  import { LB, RB, TABS, onBrowserEdge, stepOfSwipe, stepOfWheel, tabFrom, type TabKey } from "./tabs.ts";
+  import {
+    LB,
+    RB,
+    TABS,
+    WHEEL_NUDGE,
+    onBrowserEdge,
+    stepOfSwipe,
+    stepOfWheel,
+    tabFrom,
+    type TabKey,
+  } from "./tabs.ts";
 
   let {
     on,
@@ -55,6 +65,34 @@
     });
   }
 
+  // The tab whose page was last asked for ahead of a swipe. The site takes a moment to answer, and a move waits for the
+  // answer before it slides, so a swipe that asked only once it had gone far enough felt slow (the owner, 2026-11-28,
+  // after trying a trackpad swipe: "a bit slow, but it works"). So each tab asks for the page beside it once it has come
+  // in, and a swipe that sets off the other way asks for that one. The router keeps one page asked for ahead at a time.
+  let readied: string | null = null;
+  function ready(step: 1 | -1): void {
+    // Not while a move is under way: asking for a page past it would throw away the page that move is about to use.
+    if (heading !== null) return;
+    const tab = tabFrom(on, step);
+    if (tab === null || tab.href === readied) return;
+    readied = tab.href;
+    preloadData(tab.href).catch(() => {
+      if (readied === tab.href) readied = null;
+    });
+  }
+  $effect(() => {
+    // Read here so the tab it is on is the one it asks from.
+    const here = on;
+    readied = null;
+    // Once the tab has come in and has nothing left to do, so asking never slows the tab itself.
+    const soon = setTimeout(() => {
+      if (here === on) ready(tabFrom(here, 1) === null ? -1 : 1);
+    }, 500);
+    return () => {
+      clearTimeout(soon);
+    };
+  });
+
   // Where a one-finger touch started; a second finger, a touch that starts on an open sheet, or one that starts on the
   // screen's edge, where the browser's own Back and Forward swipe lives (tabs.ts), is not a swipe.
   let start: { x: number; y: number } | null = null;
@@ -67,6 +105,13 @@
       document.querySelector("dialog[open]") === null
         ? { x: touch.clientX, y: touch.clientY }
         : null;
+  }
+  function touchMoved(event: TouchEvent): void {
+    const touch = event.touches[0];
+    if (start === null || touch === undefined) return;
+    const dx = touch.clientX - start.x;
+    if (Math.abs(dx) >= 2 * WHEEL_NUDGE && Math.abs(dx) >= 2 * Math.abs(touch.clientY - start.y))
+      ready(dx < 0 ? 1 : -1);
   }
   function touchEnded(event: TouchEvent): void {
     const touch = event.changedTouches[0];
@@ -111,6 +156,7 @@
       if (Math.abs(dx) > Math.abs(dy)) {
         if (scrollsSideways(event.target, dx)) return;
         event.preventDefault();
+        if (Math.abs(dx) >= WHEEL_NUDGE && Math.abs(dx) >= 2 * Math.abs(dy)) ready(dx > 0 ? 1 : -1);
       }
       const { swipe, step } = stepOfWheel(wheeling, dx, dy, event.timeStamp);
       // A swipe that comes over a panel is spent there, so its coast does not change the tab once the panel has gone.
@@ -157,7 +203,12 @@
   });
 </script>
 
-<svelte:window ontouchstart={touchStarted} ontouchend={touchEnded} ontouchcancel={() => (start = null)} />
+<svelte:window
+  ontouchstart={touchStarted}
+  ontouchmove={touchMoved}
+  ontouchend={touchEnded}
+  ontouchcancel={() => (start = null)}
+/>
 
 <div class="top">
   <div class="left">
