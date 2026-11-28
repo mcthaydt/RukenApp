@@ -462,11 +462,24 @@ test("Back from a game's page comes back to the clip it was opened from", async 
 test("Back from a game opened past the first page comes back to that very clip, not an earlier showing of it", async ({
   page,
 }) => {
+  // The next page is held until the person is on the spinner. Unheld, it could come before the swipe (the feed asks for
+  // it on opening when the first page is short), and the swipe then went to the spinner past it and on to a third page
+  // (CI on #448, run 46115550409, tablet: the second page came 27 ms before the swipe).
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/feed?*", async (route) => {
+    await held;
+    await route.continue();
+  });
   await openFeed(page);
   const clips = page.locator("section[data-slug]");
   const before = await clips.count();
   // Past the first page: the feed goes round, so this game was shown once already on the first page.
   await page.locator("section.more").scrollIntoViewIfNeeded();
+  await expect(page.locator("section.more")).toBeInViewport({ ratio: 0.9 });
+  release();
   await expect.poll(() => clips.count()).toBeGreaterThan(before);
   await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
   const slug = (await clips.nth(before).getAttribute("data-slug")) ?? "?";
