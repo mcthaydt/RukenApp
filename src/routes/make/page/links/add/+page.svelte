@@ -1,8 +1,9 @@
-<!-- A new link, question one of two: what it should say, and whether it is a game somewhere else. -->
+<!-- A new link, question one of two: what it should say, and whether it is a game somewhere else or a small icon. -->
 <script lang="ts">
   import Picks from "../../../parts/Picks.svelte";
   import QuestionScreen from "../../../parts/QuestionScreen.svelte";
   import TextAnswer from "../../../parts/TextAnswer.svelte";
+  import { KIND_CHOICES } from "../link-kind.ts";
   import type { PageProps } from "./$types";
 
   let { form }: PageProps = $props();
@@ -13,10 +14,11 @@
   <Picks
     name="kind"
     several
-    legend="Is it a game?"
+    alone
+    legend="What kind of link?"
     plain
-    options={[{ value: "game_elsewhere", title: "A game somewhere else" }]}
-    chosen={form?.game === true ? ["game_elsewhere"] : []}
+    options={KIND_CHOICES}
+    chosen={form?.kind === undefined || form.kind === "link" ? [] : [form.kind]}
     problem={undefined}
   />
 </QuestionScreen>

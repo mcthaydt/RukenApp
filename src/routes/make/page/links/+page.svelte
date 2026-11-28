@@ -22,6 +22,7 @@
       <p>
         <strong>{link.title}</strong>
         {#if link.elsewhere}<span class="note">A game somewhere else</span>{/if}
+        {#if link.icon}<span class="note">A small icon</span>{/if}
         <span class="note">{link.taps}{link.hidden ? " · Hidden" : ""}</span>
       </p>
       <p class="row">

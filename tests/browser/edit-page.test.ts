@@ -235,7 +235,8 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your links");
   await page.getByRole("link", { name: "Add a link" }).click();
   await page.getByLabel("What should the link say?").fill("My other game");
-  await page.locator("label.pick").click();
+  // The first question has two kinds to pick from now (a game somewhere else, a small icon); this one is the game.
+  await page.locator("label.pick", { hasText: "A game somewhere else" }).click();
   await expect(page.getByLabel("A game somewhere else")).toBeChecked();
   await page.getByRole("button", { name: "Save" }).click();
   await answerRoom(page, "Where does it go?", "https://store.steampowered.com/app/1");

@@ -1,6 +1,7 @@
 import { fail, redirect } from "@sveltejs/kit";
 import { PageError, pagesServices } from "../../../../../../features/pages/pages.ts";
 import { ownPage } from "../../../own-page.server";
+import { kindOfParam } from "../../link-kind.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
 // A new link, the second of its two questions: where it goes. The words come with the address from the first.
@@ -10,7 +11,7 @@ export const load: PageServerLoad = async (event) => {
   const title = event.url.searchParams.get("title") ?? "";
   // Nothing was said yet, so the first question is the way in.
   if (title.trim() === "") redirect(303, "/make/page/links/add");
-  return { title, game: event.url.searchParams.get("game") === "1" };
+  return { title, kind: kindOfParam(event.url.searchParams.get("kind")) };
 };
 
 export const actions: Actions = {
@@ -23,16 +24,16 @@ export const actions: Actions = {
     };
     const title = text("title");
     const url = text("url");
-    const game = text("game") === "1";
+    const kind = kindOfParam(text("kind"));
     try {
       await pagesServices().service.addLink(userId, {
-        kind: game ? "game_elsewhere" : "link",
+        kind,
         title,
         url,
       });
     } catch (problem) {
       if (!(problem instanceof PageError)) throw problem;
-      return fail(400, { problem: problem.message, title, game, url });
+      return fail(400, { problem: problem.message, title, kind, url });
     }
     redirect(303, "/make/page/links");
   },

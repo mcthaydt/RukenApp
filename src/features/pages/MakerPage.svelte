@@ -8,6 +8,7 @@
   import { stillPoster } from "../../lib/still-poster.ts";
   import { quietVideo } from "../../lib/quiet-video.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
+  import SOCIAL_ICONS from "./library/social-icons.json";
 
   interface Props {
     name: string;
@@ -18,7 +19,14 @@
     /** The four jobs the colours do, and every colour of the combination for the row of dots. */
     colours: { ground: string; text: string; button: string; buttonText: string; all: string[] };
     games: { slug: string; name: string; upright: string }[];
-    links: { id: string; kind: "link" | "game_elsewhere"; title: string; site: string }[];
+    /** `social` is the site a small icon is for, on a social link only. */
+    links: {
+      id: string;
+      kind: "link" | "game_elsewhere" | "social";
+      title: string;
+      site: string;
+      social: { id: string; name: string } | null;
+    }[];
     /** Before launch: Wishlist where Play goes, the day it opens and the person's list. */
     launch: { before: false } | { before: true; opens: string; wished: string[] };
   }
@@ -27,6 +35,18 @@
 
   // The first letter of the name, for a page with no photo. A name is never empty (the pages service refuses one).
   const initial = $derived(Array.from(name.trim())[0]?.toUpperCase() ?? "");
+
+  // Links with words first, then the small icons in a row of their own after them.
+  const wordLinks = $derived(links.filter((link) => link.kind !== "social"));
+  const icons = $derived(
+    links.flatMap((link) => {
+      const path =
+        link.social === null ? undefined : (SOCIAL_ICONS as Record<string, string>)[link.social.id];
+      return link.social === null || path === undefined
+        ? []
+        : [{ id: link.id, name: link.social.name, path }];
+    }),
+  );
 </script>
 
 <main
@@ -86,9 +106,9 @@
     </section>
   {/if}
 
-  {#if links.length > 0}
+  {#if wordLinks.length > 0}
     <nav class="links" aria-label="Links">
-      {#each links as link (link.id)}
+      {#each wordLinks as link (link.id)}
         <!-- A made-up address would still be a link to somewhere: the visitor always goes through ours, which sends on only an address that was checked as https. -->
         <a
           class={link.kind === "game_elsewhere" ? "elsewhere" : "button"}
@@ -99,6 +119,19 @@
           {#if link.kind === "game_elsewhere"}
             <span class="site">A game on {link.site}</span>
           {/if}
+        </a>
+      {/each}
+    </nav>
+  {/if}
+
+  {#if icons.length > 0}
+    <!-- The small icons: each a round link named for its site, through our address like every other link. -->
+    <nav class="elsewhere-row" aria-label="Elsewhere">
+      {#each icons as icon (icon.id)}
+        <a class="icon" href={`/${handle}/out/${icon.id}`} rel="nofollow ugc noopener" aria-label={icon.name}>
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"
+            ><path d={icon.path} fill="currentColor" /></svg
+          >
         </a>
       {/each}
     </nav>
@@ -260,9 +293,31 @@
     font-weight: 400;
     font-size: 0.875rem;
   }
+  /* The icons sit in one row that wraps, each a 48px round button in the page's button colours. */
+  .elsewhere-row {
+    width: 100%;
+    max-width: 30rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+  .elsewhere-row .icon {
+    box-sizing: border-box;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    --corner: round;
+    background: var(--button);
+    color: var(--button-text);
+  }
   .play:focus-visible,
   .game :global(.wish .play:focus-visible),
   .links a:focus-visible,
+  .elsewhere-row .icon:focus-visible,
   .game h2 a:focus-visible {
     outline: 3px solid var(--text);
     outline-offset: 3px;

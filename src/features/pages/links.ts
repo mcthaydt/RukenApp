@@ -87,3 +87,43 @@ export function moveLink(ids: readonly string[], id: string, direction: "up" | "
   moved[to] = mine;
   return moved;
 }
+
+/** A site Ruken has a small round icon for, by its id in `library/social-icons.json`, and its name for people. */
+export interface SocialSite {
+  id: string;
+  name: string;
+}
+
+/** The sites a social link can be for, in the order the links room names them, each with the hosts it is found by. */
+const SOCIAL: readonly (SocialSite & { hosts: readonly string[] })[] = [
+  { id: "youtube", name: "YouTube", hosts: ["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"] },
+  { id: "twitch", name: "Twitch", hosts: ["twitch.tv", "www.twitch.tv", "m.twitch.tv"] },
+  { id: "discord", name: "Discord", hosts: ["discord.gg", "discord.com", "www.discord.com"] },
+  {
+    id: "x",
+    name: "X",
+    hosts: ["x.com", "www.x.com", "twitter.com", "www.twitter.com", "mobile.twitter.com"],
+  },
+  { id: "bluesky", name: "Bluesky", hosts: ["bsky.app"] },
+  { id: "instagram", name: "Instagram", hosts: ["instagram.com", "www.instagram.com"] },
+  { id: "tiktok", name: "TikTok", hosts: ["tiktok.com", "www.tiktok.com", "vm.tiktok.com"] },
+  { id: "steam", name: "Steam", hosts: ["store.steampowered.com", "steamcommunity.com", "steampowered.com"] },
+  { id: "itchio", name: "itch.io", hosts: ["itch.io"] },
+  { id: "github", name: "GitHub", hosts: ["github.com", "www.github.com"] },
+];
+
+export const SOCIAL_SITES: readonly SocialSite[] = SOCIAL.map(({ id, name }) => ({ id, name }));
+
+/** The site a social link's address is on, or null when Ruken has no icon for it. */
+export function socialSiteOf(url: string): SocialSite | null {
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return null;
+  }
+  // Every maker has their own `name.itch.io`.
+  if (host.endsWith(".itch.io")) host = "itch.io";
+  const site = SOCIAL.find((one) => one.hosts.includes(host));
+  return site === undefined ? null : { id: site.id, name: site.name };
+}

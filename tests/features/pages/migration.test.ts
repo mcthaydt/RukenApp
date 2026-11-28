@@ -30,3 +30,19 @@ describe("the follows migration", () => {
     expect(statements.filter((one) => !ADDING.some((kind) => kind.test(one)))).toEqual([]);
   });
 });
+
+// Social icons (feed-and-makers-page spec, K3): the migration adds one value to the link kinds and does nothing else.
+describe("the social links migration", () => {
+  const statements = readFileSync(
+    join(import.meta.dirname, "../../../prisma/migrations/20261128013638_social_links/migration.sql"),
+    "utf8",
+  )
+    .replace(/--.*$/gm, "")
+    .split(";")
+    .map((one) => one.trim().replace(/\s+/g, " "))
+    .filter((one) => one !== "");
+
+  it("is the one ALTER TYPE", () => {
+    expect(statements).toEqual([`ALTER TYPE "PageLinkKind" ADD VALUE 'social'`]);
+  });
+});

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { cleanLinkUrl, linkProblem, moveLink, siteNameOf } from "../../../src/features/pages/links.ts";
+import {
+  cleanLinkUrl,
+  linkProblem,
+  moveLink,
+  siteNameOf,
+  SOCIAL_SITES,
+  socialSiteOf,
+} from "../../../src/features/pages/links.ts";
 
 describe("the address of a link", () => {
   it.each([
@@ -91,5 +98,54 @@ describe("moving a link", () => {
     const ids = ["a", "b"];
     moveLink(ids, "b", "up");
     expect(ids).toEqual(["a", "b"]);
+  });
+});
+
+describe("the site a social link is for", () => {
+  it.each([
+    ["https://www.youtube.com/@maker", "youtube", "YouTube"],
+    ["https://youtu.be/abc", "youtube", "YouTube"],
+    ["https://m.youtube.com/@maker", "youtube", "YouTube"],
+    ["https://www.twitch.tv/maker", "twitch", "Twitch"],
+    ["https://discord.gg/abc", "discord", "Discord"],
+    ["https://discord.com/invite/abc", "discord", "Discord"],
+    ["https://x.com/maker", "x", "X"],
+    ["https://twitter.com/maker", "x", "X"],
+    ["https://bsky.app/profile/maker.bsky.social", "bluesky", "Bluesky"],
+    ["https://www.instagram.com/maker", "instagram", "Instagram"],
+    ["https://www.tiktok.com/@maker", "tiktok", "TikTok"],
+    ["https://store.steampowered.com/app/1", "steam", "Steam"],
+    ["https://steamcommunity.com/id/maker", "steam", "Steam"],
+    ["https://maker.itch.io/", "itchio", "itch.io"],
+    ["https://itch.io/profile/maker", "itchio", "itch.io"],
+    ["https://github.com/maker", "github", "GitHub"],
+  ])("finds %s", (url, id, name) => {
+    expect(socialSiteOf(url)).toEqual({ id, name });
+  });
+
+  it.each([
+    "https://example.com",
+    "https://notyoutube.com/x",
+    "https://youtube.com.example.com/x",
+    "https://evil-itch.io/x",
+    "not an address",
+  ])("finds no site for %s", (url) => {
+    expect(socialSiteOf(url)).toBeNull();
+  });
+
+  it("names ten sites, each once", () => {
+    expect(SOCIAL_SITES.map((site) => site.name)).toEqual([
+      "YouTube",
+      "Twitch",
+      "Discord",
+      "X",
+      "Bluesky",
+      "Instagram",
+      "TikTok",
+      "Steam",
+      "itch.io",
+      "GitHub",
+    ]);
+    expect(new Set(SOCIAL_SITES.map((site) => site.id)).size).toBe(10);
   });
 });

@@ -1,0 +1,19 @@
+{
+  "package": "simple-icons",
+  "version": "16.38.1",
+  "tarball": "https://registry.npmjs.org/simple-icons/-/simple-icons-16.38.1.tgz",
+  "integrity": "sha512-q4JnGp1cgeASp4jzEsmSh/7BD/e2y7aYO8XST+QBEvOJ5wzZ/9WRmKsI+QUwkfPUSiXC+sfh2+QetD38zl3N0g==",
+  "paths": {
+    "youtube": "package/icons/youtube.svg",
+    "twitch": "package/icons/twitch.svg",
+    "discord": "package/icons/discord.svg",
+    "x": "package/icons/x.svg",
+    "bluesky": "package/icons/bluesky.svg",
+    "instagram": "package/icons/instagram.svg",
+    "tiktok": "package/icons/tiktok.svg",
+    "steam": "package/icons/steam.svg",
+    "itchio": "package/icons/itchdotio.svg",
+    "github": "package/icons/github.svg"
+  },
+  "licence": "CC0-1.0"
+}

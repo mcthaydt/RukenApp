@@ -266,8 +266,13 @@ describe("what a visitor sees and counts", () => {
 
     const page = await service.pageByHandle(handle);
     expect(page?.links).toHaveLength(1);
-    expect(Object.keys(page?.links[0] ?? {}).sort()).toEqual(["id", "kind", "site", "title"]);
-    expect(page?.links[0]).toMatchObject({ kind: "game_elsewhere", title: "On Steam", site: "Steam" });
+    expect(Object.keys(page?.links[0] ?? {}).sort()).toEqual(["id", "kind", "site", "social", "title"]);
+    expect(page?.links[0]).toMatchObject({
+      kind: "game_elsewhere",
+      title: "On Steam",
+      site: "Steam",
+      social: null,
+    });
     expect(page).toMatchObject({ handle, name: "A maker", oneLine: "", photoKey: null });
     expect(page?.theme.id).toBe(0);
     expect(Object.keys(page ?? {}).sort()).toEqual([
@@ -507,5 +512,45 @@ describe("cardOf", () => {
 
     expect(card).not.toBeNull();
     expect(asked).toHaveLength(1);
+  });
+});
+
+describe("social icons", () => {
+  const REFUSED = "We don't have an icon for that site yet. Add it as a link.";
+
+  it("keeps a social link for a known site, and a visitor sees which site it is for", async () => {
+    const { userId, handle } = await makerWithPage();
+    await service.addLink(userId, { kind: "social", title: "My Discord", url: "https://discord.gg/abc" });
+    const page = await service.pageByHandle(handle);
+    expect(page?.links).toEqual([
+      {
+        id: expect.any(String) as unknown,
+        kind: "social",
+        title: "My Discord",
+        site: "discord.gg",
+        social: { id: "discord", name: "Discord" },
+      },
+    ]);
+  });
+
+  it("refuses a social link for a site it has no icon for, adding or changing, and stores nothing", async () => {
+    const { userId, pageId } = await makerWithPage();
+    await expect(
+      service.addLink(userId, { kind: "social", title: "Mine", url: "https://example.com/me" }),
+    ).rejects.toMatchObject({ code: "INVALID", message: REFUSED });
+    expect(await db().pageLink.count({ where: { pageId } })).toBe(0);
+
+    await service.addLink(userId, { kind: "link", title: "Mine", url: "https://example.com/me" });
+    const id = await idOf(userId, "Mine");
+    await expect(
+      service.updateLink(userId, id, { kind: "social", title: "Mine", url: "https://example.com/me" }),
+    ).rejects.toMatchObject({ code: "INVALID", message: REFUSED });
+    expect((await service.pageOf(userId))?.links).toMatchObject([{ kind: "link" }]);
+
+    // Changed to a known site's address, it becomes an icon.
+    await service.updateLink(userId, id, { kind: "social", title: "Mine", url: "https://github.com/me" });
+    expect((await service.pageOf(userId))?.links).toMatchObject([
+      { kind: "social", url: "https://github.com/me" },
+    ]);
   });
 });

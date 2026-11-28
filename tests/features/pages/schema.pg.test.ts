@@ -146,3 +146,12 @@ describe("the pages tables", () => {
     await expect(db().$executeRaw`DELETE FROM "User" WHERE "id" = ${owner}`).rejects.toThrow();
   });
 });
+
+describe("the kinds of link", () => {
+  // Social icons (spec K3): the migrated database knows exactly these three kinds.
+  it("are a link, a game somewhere else and a social icon", async () => {
+    const rows = await db().$queryRaw<{ kinds: string[] }[]>`
+      SELECT enum_range(NULL::"PageLinkKind")::text[] AS kinds`;
+    expect(rows[0]?.kinds).toEqual(["link", "game_elsewhere", "social"]);
+  });
+});

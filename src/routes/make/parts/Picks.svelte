@@ -20,6 +20,7 @@
     several = false,
     ratings = false,
     plain = false,
+    alone = false,
     hint,
     problem,
     legend,
@@ -33,6 +34,8 @@
     ratings?: boolean;
     /** The choices are names (a repository), set in the text face and broken only after a slash. */
     plain?: boolean;
+    /** Each choice stands alone: ticking one unticks the others, and the ticked one can still be unticked. */
+    alone?: boolean;
     hint?: string;
     problem: string | undefined;
     /** Names the group when the heading is the name of another box on the same screen (a choice beside a typed answer). */
@@ -55,7 +58,7 @@
     }
     if (!several || !(picked instanceof HTMLInputElement) || !picked.checked) return;
     for (const box of picked.form?.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`) ?? []) {
-      if (box !== picked && (picked.value === "none" || box.value === "none")) box.checked = false;
+      if (box !== picked && (alone || picked.value === "none" || box.value === "none")) box.checked = false;
     }
   }
 </script>

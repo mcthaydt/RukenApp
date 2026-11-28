@@ -1,8 +1,9 @@
-<!-- Changing a link, question one of two: what it says, and whether it is a game somewhere else. -->
+<!-- Changing a link, question one of two: what it says, and whether it is a game somewhere else or a small icon. -->
 <script lang="ts">
   import Picks from "../../../parts/Picks.svelte";
   import QuestionScreen from "../../../parts/QuestionScreen.svelte";
   import TextAnswer from "../../../parts/TextAnswer.svelte";
+  import { KIND_CHOICES } from "../link-kind.ts";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
@@ -18,10 +19,11 @@
   <Picks
     name="kind"
     several
+    alone
     plain
-    legend="Is it a game?"
-    options={[{ value: "game_elsewhere", title: "A game somewhere else" }]}
-    chosen={(form?.game ?? data.game) ? ["game_elsewhere"] : []}
+    legend="What kind of link?"
+    options={KIND_CHOICES}
+    chosen={(form?.kind ?? data.kind) === "link" ? [] : [form?.kind ?? data.kind]}
     problem={undefined}
   />
 </QuestionScreen>

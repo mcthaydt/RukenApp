@@ -15,6 +15,7 @@ export const load: PageServerLoad = async (event) => {
       id: link.id,
       title: link.title,
       elsewhere: link.kind === "game_elsewhere",
+      icon: link.kind === "social",
       hidden: link.hidden,
       taps: `Tapped ${timesWords(link.taps)}`,
       first: index === 0,

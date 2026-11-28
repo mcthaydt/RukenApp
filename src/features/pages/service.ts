@@ -1,7 +1,15 @@
 import type { FileStore } from "../../lib/files/store.ts";
 import type { PageLinkKind, PrismaClient } from "../../lib/server/db.ts";
 import { cleanHandle, HANDLE_TAKEN, handleProblem } from "./handle.ts";
-import { cleanLinkUrl, linkProblem, MAX_LINKS, moveLink, siteNameOf } from "./links.ts";
+import {
+  cleanLinkUrl,
+  linkProblem,
+  MAX_LINKS,
+  moveLink,
+  siteNameOf,
+  socialSiteOf,
+  type SocialSite,
+} from "./links.ts";
 import { photoKeyFor, photoProblem, type PhotoContentType } from "./photo.ts";
 import { offeredTheme, themeById, type Theme } from "./themes.ts";
 
@@ -53,7 +61,8 @@ export interface PublicPage {
   oneLine: string;
   theme: Theme;
   photoKey: string | null;
-  links: { id: string; kind: PageLinkKind; title: string; site: string }[];
+  /** `social` is the site a social icon is for; null on every other kind of link. */
+  links: { id: string; kind: PageLinkKind; title: string; site: string; social: SocialSite | null }[];
 }
 
 export type PagesService = ReturnType<typeof createPagesService>;
@@ -134,12 +143,21 @@ export function createPagesService(deps: PagesServiceDeps) {
     if (changed.count === 0) throw new PageError("NOT_FOUND", "You don't have a page yet.");
   }
 
+  /** What is wrong with a link, in a person's words, or null: the link rules, and a social icon only for a site Ruken has one for. */
+  function problemOf(input: { kind: PageLinkKind; title: string; url: string }): string | null {
+    const problem = linkProblem(input);
+    if (problem !== null) return problem;
+    if (input.kind === "social" && socialSiteOf(input.url) === null)
+      return "We don't have an icon for that site yet. Add it as a link.";
+    return null;
+  }
+
   /** Adds a link at the end of the page. Its address is kept as `cleanLinkUrl` read it. */
   async function addLink(
     userId: string,
     input: { kind: PageLinkKind; title: string; url: string },
   ): Promise<void> {
-    const problem = linkProblem(input);
+    const problem = problemOf(input);
     if (problem !== null) throw new PageError("INVALID", problem);
     const url = cleanLinkUrl(input.url);
     // `linkProblem` already said null, so the address is good; this is for the compiler.
@@ -184,7 +202,7 @@ export function createPagesService(deps: PagesServiceDeps) {
     linkId: string,
     input: { kind: PageLinkKind; title: string; url: string },
   ): Promise<void> {
-    const problem = linkProblem(input);
+    const problem = problemOf(input);
     if (problem !== null) throw new PageError("INVALID", problem);
     const url = cleanLinkUrl(input.url);
     if (url === null) throw new PageError("INVALID", "A link starts with https://");
@@ -276,6 +294,7 @@ export function createPagesService(deps: PagesServiceDeps) {
         kind: link.kind,
         title: link.title,
         site: siteNameOf(link.url),
+        social: link.kind === "social" ? socialSiteOf(link.url) : null,
       })),
     };
   }

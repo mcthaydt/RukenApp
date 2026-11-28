@@ -330,9 +330,9 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. The data files and their test, `tests/features/pages/social-icons.test.ts` (K1).
-- [ ] 2. `socialSiteOf`, test first (K2). The migration, with its two checks in `tests/features/pages/schema.pg.test.ts` first (K3). The service, test first (K4).
-- [ ] 3. The page's row and the room's choice, journeys first (K5, K6), shown as "a maker's page with social icons".
+- [x] 1. The data files and their test, `tests/features/pages/social-icons.test.ts` (K1).
+- [x] 2. `socialSiteOf`, test first (K2). The migration, with its two checks in `tests/features/pages/schema.pg.test.ts` first (K3). The service, test first (K4).
+- [x] 3. The page's row and the room's choice, journeys first (K5, K6), shown as "a maker's page with social icons".
 
 ## 7. The quality bar, for the slice
 
