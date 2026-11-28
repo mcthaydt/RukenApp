@@ -1,11 +1,12 @@
 import { chicagoDayOf, type Clock } from "../../lib/clock.ts";
 import type { ListedGame } from "../games/games.ts";
-import { CROWD, type Asking } from "./feed-public.ts";
+import { CROWD, FEED_PUBLIC_DEFAULTS, type Asking } from "./feed-public.ts";
 import type { ClipMarks } from "./marks.ts";
 import { openRanker } from "./public-ranker.ts";
 import {
   isRankedPageOrBadCursor,
   type FeedFacts,
+  type FeedPlays,
   type RankedPage,
   type Ranker,
   type RankRequest,
@@ -21,6 +22,11 @@ export { MORE_AT_LEAST } from "./public-ranker.ts";
 
 /** How far back a game's plays are read for the ranker. */
 const PLAYED_DAYS = 7;
+/**
+ * How long one play read is used for (learned spec A10): every page in the same five minutes, for the same games and
+ * window, is handed the same rows, so only the first page of each five minutes in a Worker waits for the read.
+ */
+export const PLAYS_KEPT_MS = 5 * 60 * 1000;
 /** How long the private ranker has to answer before the open one answers instead. */
 export const PRIVATE_WAIT_MS = 800;
 /**
@@ -34,6 +40,10 @@ export interface FeedServiceDeps {
   clock: Clock;
   liveGames(): Promise<ListedGame[]>;
   memberBeatsByGame(since: Date, now: Date): Promise<Map<string, number>>;
+  /** Who played what, per person, game and Chicago day; read only for the private ranker. Left out, nobody. */
+  playDays?: (since: Date, now: Date, gameIds: readonly string[]) => Promise<PlayDayRow[]>;
+  /** How many days of play the private ranker is handed (FEED_PUBLIC's `windowDays`); left out, its safe side. */
+  windowDays?: () => number;
   makersOf(
     userIds: readonly string[],
   ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>>;
@@ -93,6 +103,42 @@ export interface FeedPage {
   ask?: { key: string; slug: string; name: string };
 }
 
+/** One person's play of one game on one Chicago day (`YYYY-MM-DD`), as the play read answers it. */
+export interface PlayDayRow {
+  userId: string;
+  gameId: string;
+  day: string;
+  beats: number;
+  basis: "member" | "free_game";
+}
+
+/**
+ * The play rows as the ranker is sent them (FeedPlays): plain numbers, and each person a number that means nothing
+ * outside this request, the viewer 0 and everyone else from 1 in order of their ids.
+ */
+export function packPlays(
+  rows: readonly PlayDayRow[],
+  gameIds: readonly string[],
+  viewerId: string | null,
+  since: number,
+  asOf: number,
+): FeedPlays {
+  const gameAt = new Map(gameIds.map((id, index) => [id, index]));
+  const others = [...new Set(rows.map((row) => row.userId))].filter((id) => id !== viewerId).sort();
+  const personAt = new Map(others.map((id, index) => [id, index + 1]));
+  if (viewerId !== null) personAt.set(viewerId, 0);
+  const today = Date.parse(chicagoDayOf(asOf));
+  const packed: number[] = [];
+  for (const row of rows) {
+    const game = gameAt.get(row.gameId);
+    const person = personAt.get(row.userId);
+    if (game === undefined || person === undefined) continue;
+    const age = Math.round((today - Date.parse(row.day)) / 86_400_000);
+    packed.push(game, person, age, row.beats, row.basis === "member" ? 1 : 0);
+  }
+  return { since, rows: packed };
+}
+
 /** A clip's marks when none were read for it. */
 const NO_MARKS: ClipMarks = { likes: 0, liked: false, saved: false, reposted: false };
 
@@ -116,6 +162,25 @@ export function createFeedService(deps: FeedServiceDeps) {
     ((line: string) => {
       console.warn(line);
     });
+
+  let kept: { key: string; rows: Promise<PlayDayRow[]> } | null = null;
+  /** The play rows for this window and these games, read at most once in each PLAYS_KEPT_MS. A failed read is not kept. */
+  function playRows(
+    read: NonNullable<FeedServiceDeps["playDays"]>,
+    since: number,
+    nowMs: number,
+    gameIds: readonly string[],
+  ): Promise<PlayDayRow[]> {
+    const key = `${String(Math.floor(nowMs / PLAYS_KEPT_MS))}~${String(since - nowMs)}~${gameIds.join(",")}`;
+    if (kept?.key === key) return kept.rows;
+    const rows = read(new Date(since), new Date(nowMs), gameIds);
+    const entry = { key, rows };
+    kept = entry;
+    rows.catch(() => {
+      if (kept === entry) kept = null;
+    });
+    return rows;
+  }
 
   /** What a call to the private ranker answered within PRIVATE_WAIT_MS, or why it did not. */
   async function within(call: () => Promise<unknown>): Promise<{ answer: unknown } | "slow" | "threw"> {
@@ -198,21 +263,41 @@ export function createFeedService(deps: FeedServiceDeps) {
       memberBeats: Object.fromEntries(beats),
       memberBeatsSince: since,
     };
+    const bound = privateRanker();
     const seed = chicagoDayOf(nowMs);
     const viewer: Viewer =
       asking.kind === "crowd" ? { kind: "crowd", seed } : { kind: "full", seed, id: asking.id };
-    const request = (from: string | null): RankRequest => ({ v: 1, viewer, after: from, asOf: nowMs, facts });
+    // Only the private ranker is sent who played what. A read that fails gives this page the open order.
+    let plays: FeedPlays | undefined;
+    let playsFailed = false;
+    if (bound !== null && deps.playDays !== undefined) {
+      const since = nowMs - (deps.windowDays?.() ?? FEED_PUBLIC_DEFAULTS.windowDays) * 24 * 60 * 60 * 1000;
+      const gameIds = facts.games.map((game) => game.id);
+      try {
+        const rows = await playRows(deps.playDays, since, nowMs, gameIds);
+        plays = packPlays(rows, gameIds, asking.kind === "full" ? asking.id : null, since, nowMs);
+      } catch {
+        playsFailed = true;
+        log("feed: the play read failed; the open order was used.");
+      }
+    }
+    const request = (from: string | null, withPlays = false): RankRequest => ({
+      v: 1,
+      viewer,
+      after: from,
+      asOf: nowMs,
+      facts: withPlays && plays !== undefined ? { ...facts, plays } : facts,
+    });
 
     let ranked: RankedPage | "bad-cursor";
     let prefix: string;
-    const bound = privateRanker();
-    if (bound === null) {
-      // No private ranker here: a private address is from before, and starts the feed again.
+    if (bound === null || playsFailed) {
+      // No private ranker here (or nothing to hand it): a private address is from before, and starts the feed again.
       ranked = await open.page(request(cursor?.made === "open" ? cursor.rest : null));
       prefix = OPEN_PREFIX;
     } else {
       // An open address is from while the private ranker was not answering: it starts the private feed again.
-      const answer = await askPrivate(bound, request(cursor?.made === "private" ? cursor.rest : null));
+      const answer = await askPrivate(bound, request(cursor?.made === "private" ? cursor.rest : null, true));
       if (answer === "slow" || answer === "threw" || answer === "bad answer") {
         log(`feed: the private ranker did not answer (${answer}); the open order was used.`);
         // An open address goes on in the open order, so a lasting outage still scrolls; a private one starts it fresh.

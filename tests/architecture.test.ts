@@ -184,3 +184,44 @@ describe("what a browser entry may reach", () => {
     expect(broken).toEqual([]);
   });
 });
+
+// The feed's order may never be bought: nothing a person pays, or a maker earns, reaches it. A member's play counts
+// through the play rows; whether someone is a member is the one thing the feed may ask membership.
+describe("the feed and money", () => {
+  const feedFiles = sourceFiles.filter((file) => featureOf(file)?.feature === "feed");
+  const reaches = (file: string, feature: string) =>
+    importsOf(file).filter((target) => {
+      const path = resolveImport(file, target);
+      return path !== null && featureOf(path)?.feature === feature;
+    });
+
+  test("nothing in the feed imports from money", () => {
+    expect(
+      feedFiles.filter((file) => reaches(file, "money").length > 0).map((file) => relative(ROOT, file)),
+    ).toEqual([]);
+  });
+
+  test("the feed takes from membership only who is a member", () => {
+    const allowed = new Set(["membershipServices", "MembershipView"]);
+    const taken = feedFiles.flatMap((file) => {
+      if (reaches(file, "membership").length === 0) return [];
+      const text = readFileSync(file, "utf8");
+      const names = [
+        ...text.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+["'][^"']*membership[^"']*["']/g),
+      ].flatMap((match) =>
+        (match[1] ?? "")
+          .split(",")
+          .map((name) => name.replace(/^\s*type\s+/, "").trim())
+          .filter(Boolean),
+      );
+      return names.filter((name) => !allowed.has(name)).map((name) => `${relative(ROOT, file)}: ${name}`);
+    });
+    expect(taken).toEqual([]);
+  });
+
+  test("the check sees an import from money when there is one", () => {
+    const file = join(FEATURES, "feed", "probe.ts");
+    expect(resolveImport(file, "../money/money.ts")).toBe(join(FEATURES, "money", "money.ts"));
+    expect(featureOf(join(FEATURES, "money", "money.ts"))?.feature).toBe("money");
+  });
+});

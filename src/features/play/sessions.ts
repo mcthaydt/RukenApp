@@ -1,5 +1,5 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
-import type { Clock } from "../../lib/clock.ts";
+import { CALENDAR_ZONE, type Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import type { RateLimiter, RateLimitRule } from "../../lib/server/rate-limit.ts";
 import type { LiveGame } from "../games/games.ts";
@@ -24,6 +24,15 @@ export interface PlayServiceDeps {
 
 export type StartedPlay =
   { frameUrl: string; session: { id: string; token: string } } | { refused: "join" | "busy" };
+
+/** One person's play of one game on one Chicago day (`YYYY-MM-DD`), in attentive beats. */
+export interface PlayDay {
+  userId: string;
+  gameId: string;
+  day: string;
+  beats: number;
+  basis: "member" | "free_game";
+}
 
 export type BeatResult = "recorded" | "too_soon" | "over" | "unknown";
 
@@ -236,6 +245,48 @@ export function createPlayService(deps: PlayServiceDeps) {
   }
 
   /**
+   * Who played what, for the learned feed: per signed-in person, game and Chicago day from `since` to `now`, their
+   * attentive beats and whether they played as a member or free. Staff's and a maker's own plays are left out, and so is
+   * play by nobody. Only a person the feed may learn from is read (learned spec 4.1 and 10): known to be 18 or over
+   * today in Chicago, with Learn from what I do on, and only beats after their last Start over. A beat counts on the Chicago day it arrived, so a sitting across midnight counts on both days. Only
+   * `gameIds` are read: the live games the feed may show. A person plays a game as one of the two at a time, so a
+   * day that has both answers two rows. One query, bounded to recent sessions as `memberBeatsByGame` is.
+   */
+  async function playDays(since: Date, now: Date, gameIds: readonly string[]): Promise<PlayDay[]> {
+    if (gameIds.length === 0) return [];
+    const earliestStart = new Date(since.getTime() - PLAY_SESSION_LIFE_MS);
+    const rows = await deps.db.$queryRaw<
+      { userId: string; gameId: string; day: string; beats: bigint; basis: PlayDay["basis"] }[]
+    >`
+      SELECT "userId", "gameId", basis, to_char(day, 'YYYY-MM-DD') AS day, COUNT(*) AS beats
+      FROM (
+        SELECT s."userId", s."gameId", s.basis::text AS basis,
+          (b."receivedAt" AT TIME ZONE ${CALENDAR_ZONE})::date AS day
+        FROM "PlaySession" s
+        JOIN "PlayBeat" b ON b."sessionId" = s.id
+        JOIN "User" u ON u.id = s."userId"
+        WHERE s.basis::text IN ('member', 'free_game')
+          AND u."adultOn" <= (${now}::timestamptz AT TIME ZONE ${CALENDAR_ZONE})::date
+          AND u."feedPersonal"
+          AND (u."feedResetAt" IS NULL OR b."receivedAt" > u."feedResetAt")
+          AND s."gameId" = ANY(${[...gameIds]})
+          AND s."startedAt" >= ${earliestStart}
+          AND s."startedAt" <= ${now}
+          AND b.attentive
+          AND b."receivedAt" >= ${since}
+          AND b."receivedAt" <= ${now}
+      ) beat
+      GROUP BY "userId", "gameId", basis, day`;
+    return rows.map((row) => ({
+      userId: row.userId,
+      gameId: row.gameId,
+      day: row.day,
+      beats: Number(row.beats),
+      basis: row.basis,
+    }));
+  }
+
+  /**
    * For each game, how many attentive beats members' plays sent from `since` to `now`: the measure of what is being
    * played, for the feed's order. Free play, staff's and a maker's own plays never count. A game with none is not in
    * the map. The database adds them up in one query. A session takes beats for `PLAY_SESSION_LIFE_MS`, so only sessions
@@ -267,6 +318,7 @@ export function createPlayService(deps: PlayServiceDeps) {
     sittingOf,
     playersThisWeek,
     memberBeatsByGame,
+    playDays,
   };
 }
 
