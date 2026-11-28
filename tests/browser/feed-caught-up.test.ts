@@ -65,6 +65,12 @@ test("after the new games, the feed says You're all caught up, and keeps going",
   test.setTimeout(120_000);
   const asked: string[] = [];
   let siteNext: string | null = null;
+  // The stand-in's page waits until the first page has been counted: with few games live, the screen asks for the next
+  // page as soon as it starts.
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   await page.route("**/api/feed?*", async (route) => {
     const address = new URL(route.request().url());
     const after = address.searchParams.get("after") ?? "";
@@ -79,6 +85,7 @@ test("after the new games, the feed says You're all caught up, and keeps going",
       await route.continue();
       return;
     }
+    await held;
     const response = await route.fetch();
     const page = (await response.json()) as {
       clips: { key: string }[];
@@ -95,6 +102,7 @@ test("after the new games, the feed says You're all caught up, and keeps going",
   const firstCount = await clips(page).count();
   // The site's first page says nothing of being caught up: the journeys' site runs on the open order.
   await expect(page.getByText(LINE)).toHaveCount(0);
+  release();
 
   // On through the first page; near its end the screen asks for the next one, which the stand-in answers.
   await goTo(page, firstCount);
