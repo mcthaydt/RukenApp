@@ -7,7 +7,7 @@ import { CODE_TOO_SOON, CODES_PAUSED } from "./auth-limits-plugin.ts";
 import { copyAuthCookies, type CookiePolicy } from "./cookies.ts";
 import type { AuthHandler } from "./forward.ts";
 import { newBrowserValue, type PendingSignUp } from "./pending-sign-up.ts";
-import { countryOf, toE164 } from "./phone.ts";
+import { countryOf, toE164, typedNumber } from "./phone.ts";
 import { SIGN_IN_PAUSED, SIGN_IN_PAUSED_MESSAGE } from "./sign-in-pause-plugin.ts";
 
 // The sign-in, sign-up, forgot-password and sign-out pages post ordinary HTML forms to SvelteKit actions, which call
@@ -137,17 +137,9 @@ export async function signInWithPassword(
   return otherFailure(response, kept);
 }
 
-/**
- * The number a form's country and phone fields name, as E.164, or null for a closed country or a number that cannot be
- * one. A number typed with its own "+" (or "00") names its own country, so it must still start with the dialing code of
- * the open country that was picked: "+44 ..." under United States is a closed country's number, and is refused here
- * before anything is kept or texted.
- */
+/** The number a form's country and phone fields name, as E.164, or null (phone.ts's `typedNumber`). */
 function numberOf(form: Pick<FormFields, "country" | "phone">): string | null {
-  const country = countryOf(form.country);
-  if (country === null) return null;
-  const number = toE164(country.dialing, form.phone);
-  return number !== null && number.startsWith(country.dialing) ? number : null;
+  return typedNumber(form.country, form.phone);
 }
 
 /** A 429 from asking for a code, in words: too soon, paused, or just too many. */
