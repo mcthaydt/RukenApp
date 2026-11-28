@@ -110,9 +110,9 @@ function overlaps(page: Page): Promise<string[]> {
           (style.backgroundColor !== "rgba(0, 0, 0, 0)" && style.backgroundColor !== "transparent");
         return (
           painted &&
-          // A picture or a video is what the buttons sit on, not a tip floating over them: while it loads it is
-          // painted a colour (look.css, `[data-loading]`), and the game page's video lies under its Back on purpose.
-          !thing.matches("img, video") &&
+          // The game page's video lies under its Back on purpose, and while it loads it is painted a colour (look.css,
+          // `[data-loading]`): it is Back's backdrop, not a tip over it.
+          !thing.matches(".gamepage .clipbox video") &&
           thing.querySelector("a, button, input, select, textarea, summary, [role='button']") === null &&
           thing.closest(
             "a, button, input, select, textarea, summary, [role='button'], [aria-hidden='true'], .friends",
