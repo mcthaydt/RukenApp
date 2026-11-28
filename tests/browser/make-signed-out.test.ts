@@ -29,7 +29,7 @@ async function pressThePlus(page: Page): Promise<void> {
   if (test.info().project.use.hasTouch === true) await plus(page).tap();
   else await plus(page).click();
   await expect(page).toHaveURL("/make");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Made a game? Put it on Ruken.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Made a game?");
 }
 
 test.describe("before a yes to cookies", () => {
@@ -45,9 +45,12 @@ test.describe("before a yes to cookies", () => {
     const signIn = page.getByRole("main").getByRole("link", { name: "Sign in", exact: true });
     await expect(join).toHaveAttribute("href", "/sign-up?next=%2Fmake");
     await expect(signIn).toHaveAttribute("href", "/sign-in?next=%2Fmake");
+    // Both are on the first screen, above the bar, with nothing to scroll (the owner: the app never scrolls).
+    const barTop = (await boxOf(bar(page))).y;
     for (const button of [join, signIn]) {
       await expect(button).toBeVisible();
       const box = await boxOf(button);
+      expect(box.y + box.height).toBeLessThanOrEqual(barTop);
       expect(box.height).toBeGreaterThanOrEqual(48);
       expect(box.width).toBeGreaterThanOrEqual(48);
     }
@@ -57,6 +60,8 @@ test.describe("before a yes to cookies", () => {
     // Nothing on it for a signed-in maker: no account to go to, no games, no Add a game.
     await expect(page.getByRole("link", { name: "Your account" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Add a game", exact: true })).toHaveCount(1);
+    const scrolls = await page.evaluate(() => document.body.scrollHeight - document.body.clientHeight);
+    expect(scrolls).toBe(0);
     await showTheOwner(page, testInfo, "the plus, signed out");
   });
 

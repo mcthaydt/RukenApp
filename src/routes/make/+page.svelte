@@ -14,18 +14,13 @@
 
 {#if data.signedOut}
   <main class="card">
-    <h1>Made a game? Put it on Ruken.</h1>
-    <p>Ruken is picky. A person checks every game, so yours sits next to good ones.</p>
+    <h1>Made a game?</h1>
     <ul class="bullets">
-      <li>The feed brings you players. One tap plays your game.</li>
-      <li>Send your game from GitHub in six short questions.</li>
-      <li>Your game gets a good-looking page, made in minutes.</li>
-      <li>
-        Get paid. Half of what members pay, after tax and fees, goes to makers, shared by how long people
-        play.
-      </li>
+      <li>A person checks every game, so only good ones get in.</li>
+      <li>Send it from GitHub in six short questions. The feed brings you players.</li>
+      <li>Get paid by how long members play it.</li>
     </ul>
-    <div class="ways apart">
+    <div class="ways">
       <a class="button" href="/sign-up?next=%2Fmake">Join Ruken</a>
       <a class="quiet" href="/sign-in?next=%2Fmake">Sign in</a>
     </div>
