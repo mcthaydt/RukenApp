@@ -1,6 +1,6 @@
 # Branch picker jump, implementation audit 2
 
-Pull request #470 (`claude/project-thread-2yivgp`), head `c10e21d31c993fe7190a7dee1d7975f2c3012a4c`. Lane 2. Fresh review, Opus 5.5, medium. Written 2026-11-28 15:12 UTC (time from `date`).
+Pull request #470 (`claude/project-thread-2yivgp`), head `c10e21d31c993fe7190a7dee1d7975f2c3012a4c`. Lane 2. Fresh review, Opus 5.5, medium. Written 2026-11-28 15:10 UTC (time from `date`).
 
 Audit 1 passed `db01ce8`; that PASS went stale when the full run failed `tests/lib/look.test.ts` (a `<style>` block and a `lookup` class in `FilesQuestion.svelte`, which the look rules forbid). `147b3c3` moved the rules to `src/lib/look.css` as `.note[aria-busy="true"]`, and `c10e21d` merged `main` (#451).
 
@@ -23,4 +23,4 @@ Verdict: **PASS**. No red findings.
 ## Notes (not from this change, not fixed here)
 
 - The branches spinner shows at once, not after 2 s (same as `main`; the 2 s rule is for pages).
-- At 667×375 "Change the branch or folder" and "Throw this game away" sit about 1 px apart. They do not cross (no hit in the probe), and it is the same on `main`.
+- At 667×375 "Change the branch or folder" and "Throw this game away" sit about 1 px apart. They do not cross (no hit in the probe); this change does not touch them (not checked on `main`).
