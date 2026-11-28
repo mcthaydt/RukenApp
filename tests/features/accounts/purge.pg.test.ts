@@ -587,6 +587,57 @@ describe("purgeDueAccounts", () => {
     ).toEqual([{ stopperId: other.id, stoppedId: friend.id }]);
   });
 
+  // Playtesting (playtesting spec, "What is kept"): a person's own rows go, and so do every row and the invite link of a
+  // leaving maker's games; nobody else's are touched.
+  it("removes a person's playtest rows, and their games' rows and link, after the 14 days", async () => {
+    const leaving = await seedPerson();
+    const player = await seedPerson();
+    const maker = await seedPerson();
+    const others = await seedGame(maker.id, "live");
+    const theirs = await db().game.create({
+      data: {
+        publicId: newPublicId(),
+        slug: "leaving-makers-playtest",
+        makerUserId: leaving.id,
+        name: "A game",
+      },
+    });
+    const at = new Date(START);
+    await db().playtester.createMany({
+      data: [
+        { gameId: others.id, userId: leaving.id, state: "asked", via: "ask", askedAt: at },
+        { gameId: others.id, userId: player.id, state: "in", via: "invite", decidedAt: at },
+        { gameId: theirs.id, userId: player.id, state: "in", via: "link", decidedAt: at },
+      ],
+    });
+    await db().playtestLink.createMany({
+      data: [
+        { gameId: theirs.id, token: "a".repeat(22), madeAt: at },
+        { gameId: others.id, token: "b".repeat(22), madeAt: at },
+      ],
+    });
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
+    expect(await db().playtester.count({ where: { gameId: { in: [others.id, theirs.id] } } })).toBe(3);
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
+    expect(
+      await db().playtester.findMany({
+        where: { gameId: { in: [others.id, theirs.id] } },
+        select: { gameId: true, userId: true },
+      }),
+    ).toEqual([{ gameId: others.id, userId: player.id }]);
+    expect(
+      await db().playtestLink.findMany({
+        where: { gameId: { in: [others.id, theirs.id] } },
+        select: { gameId: true },
+      }),
+    ).toEqual([{ gameId: others.id }]);
+  });
+
   // What a person liked, saved and reposted is theirs (learned-feed spec, unit G), and every mark on a leaving maker's
   // games goes with the games, for every player.
   it("removes a person's marks and every mark on their games after the 14 days, and leaves everyone else's", async () => {
