@@ -19,6 +19,7 @@
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
+  import { keepSound, soundWanted } from "./sound.ts";
   import GoodPick from "./GoodPick.svelte";
   import FeedTop from "./FeedTop.svelte";
   import FollowBadge from "./FollowBadge.svelte";
@@ -78,7 +79,8 @@
   let warm = $state(false);
   let shape = $state<"upright" | "wide">("upright");
   let current = $state(0);
-  let soundOn = $state(false);
+  // As the person last left it, so coming back to the feed never turns the sound off by itself.
+  let soundOn = $state(soundWanted());
   // The clips a press has started, for a device that does not play a video by itself.
   let started = $state<string[]>([]);
   let autoplay = $state(false);
@@ -336,6 +338,7 @@
             if (index !== current) return;
             // The browser would not play with sound: the quiet answer is to play without it, and the mark says so.
             if (soundOn) soundOn = false;
+            keepSound(false);
             video.muted = true;
             video.play().catch(() => undefined);
           });
@@ -362,6 +365,7 @@
 
   function pressSound(slug: string): void {
     soundOn = !soundOn;
+    keepSound(soundOn);
     if (!started.includes(slug)) started = [...started, slug];
     forgetHints();
   }
