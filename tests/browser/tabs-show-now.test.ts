@@ -154,7 +154,8 @@ test("a tab shown from a page asked for ahead takes in what is new without movin
   await onScreen.evaluate((section) => ((section as HTMLElement & { seen?: true }).seen = true));
   await expect(page.locator(`main section[data-slug="${other.slug}"]`)).toHaveCount(0);
   // The site is asked again, and the other maker's game comes in after the clip on screen, which stays.
-  await expect.poll(() => answers).toBe(1);
+  // (A mouse resting on the tab may have the router ask once more for the page it points at.)
+  await expect.poll(() => answers).toBeGreaterThanOrEqual(1);
   await expect(page.locator(`main section[data-slug="${other.slug}"]`).first()).toBeAttached({
     timeout: 10_000,
   });
