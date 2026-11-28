@@ -600,7 +600,7 @@
 
         {#if index === 0 && hint !== null}
           <div class="hints">
-            <p>{hint === "touch" ? "Swipe up for the next game" : "Scroll down for the next game"}</p>
+            <p>{hint === "touch" ? "Swipe up for more" : "Scroll down for more"}</p>
             <p>{hint === "touch" ? "Tap the speaker for sound" : "Click the speaker for sound"}</p>
           </div>
         {/if}

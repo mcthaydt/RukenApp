@@ -963,12 +963,12 @@ test.describe("the first open's hints", () => {
     await page.goto("/");
     await expect(page.locator("section[data-slug]").first()).toBeAttached();
     const touch = await page.evaluate(() => matchMedia("(pointer: coarse)").matches);
-    const swipe = page.getByText(touch ? "Swipe up for the next game" : "Scroll down for the next game");
+    const swipe = page.getByText(touch ? "Swipe up for more" : "Scroll down for more");
     const sound = page.getByText(touch ? "Tap the speaker for sound" : "Click the speaker for sound");
     await expect(swipe).toBeVisible();
     await expect(sound).toBeVisible();
     await expect(
-      page.getByText(touch ? "Scroll down for the next game" : "Swipe up for the next game"),
+      page.getByText(touch ? "Scroll down for more" : "Swipe up for more"),
     ).toHaveCount(0);
     const play = await boxOf(
       page.locator("section[data-slug]").first().getByRole("link", { name: "Play", exact: true }),
@@ -1005,7 +1005,7 @@ test.describe("the first open's hints", () => {
       const page = await context.newPage();
       await page.goto("/");
       await expect(page.locator("section[data-slug]").first()).toBeAttached();
-      await expect(page.getByText(/for the next game$/)).toHaveCount(0);
+      await expect(page.getByText(/(Swipe up|Scroll down) for more$/)).toHaveCount(0);
       // Without script, a clip's name and Play are still plain links.
       await expect(
         page.locator("section[data-slug]").first().getByRole("link", { name: "Play", exact: true }),
@@ -1044,7 +1044,7 @@ test.describe("the first open's hints", () => {
         .toBe(true);
       const seen = await page.evaluate(() => (window as unknown as { seen: number[] }).seen);
       expect(seen.length).toBeLessThanOrEqual(1);
-      await expect(page.getByText(/for the next game$/)).toHaveCount(0);
+      await expect(page.getByText(/(Swipe up|Scroll down) for more$/)).toHaveCount(0);
       // A clip that may not move by itself waits at its first frame, and the speaker starts it without leaving the feed.
       const video = current(page).locator("video");
       await expect.poll(() => video.evaluate((clip: HTMLVideoElement) => clip.paused)).toBe(true);

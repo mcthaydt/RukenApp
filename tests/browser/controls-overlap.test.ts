@@ -14,7 +14,7 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // small phone, a common phone and the small phone held sideways (opened from the Home Screen, where it works sideways).
 // A press anywhere on a clip opens its game: that whole-clip link is under everything on purpose, and is left out, as is
 // the game page's video, which opens it full size, under its Back, and the plus to follow a maker, a badge on their
-// picture. Nothing else is: a button wholly on top of another
+// picture. Nothing else is: a tip over the friends' faces counts too, and a button wholly on top of another
 // counts, and so does a page that scrolls, on its first screen, since that is what a person sees. The feed is checked on
 // a clip whose maker has a page with a long name, the tallest column of buttons there is. The friends' faces on a clip are a picture, not a control, and float behind the buttons (the owner, 2026-11-27), so they
 // are not counted either. Nothing here is made to be kept: the journeys that make, change and delete things are their
@@ -98,7 +98,7 @@ function overlaps(page: Page): Promise<string[]> {
       .filter((thing) => thing.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
       .map(drawn)
       .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
-    // Anything else drawn floating over the screen that is not a button (a tip such as "Swipe up for the next game", a
+    // Anything else drawn floating over the screen that is not a button (a tip such as "Swipe up for more", a
     // "Got it." line, a problem's words): a positioned box painted with glass or a colour, holding no button. Over a
     // button it hides it as surely as another button would. The friends' faces are a picture behind the buttons.
     const overlays = [...document.querySelectorAll("body *")]
@@ -119,9 +119,14 @@ function overlaps(page: Page): Promise<string[]> {
       })
       .map(drawn)
       .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
+    // The friends' faces float behind the buttons, but a tip over them hides them as surely as it hides a button.
+    const faces = [...document.querySelectorAll(".friends")]
+      .filter((thing) => thing.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
+      .map(drawn)
+      .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
     const found: string[] = [];
     for (const overlay of overlays)
-      for (const control of controls) {
+      for (const control of [...controls, ...faces]) {
         if (overlay.thing.contains(control.thing) || control.thing.contains(overlay.thing)) continue;
         // The game's name on the game page sits over its video, the backdrop that opens it full size, on purpose.
         if (control.thing.matches(".gamepage .clipopen")) continue;
