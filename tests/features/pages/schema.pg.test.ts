@@ -140,6 +140,19 @@ describe("the pages tables", () => {
     expect(left[0]?.n).toBe(0n);
   });
 
+  // The listed column's migration gives every page that was there before it `listed` true, by its default.
+  it("lists a page made without saying, and keeps one made unlisted", async () => {
+    const before = await insertPage(await newUser());
+    const unlisted = await insertPage(await newUser());
+    await db().$executeRaw`UPDATE "MakerPage" SET "listed" = false WHERE "id" = ${unlisted}`;
+    const rows = await db().$queryRaw<{ id: string; listed: boolean }[]>`
+      SELECT "id", "listed" FROM "MakerPage" WHERE "id" IN (${before}, ${unlisted})`;
+    expect(Object.fromEntries(rows.map((row) => [row.id, row.listed]))).toEqual({
+      [before]: true,
+      [unlisted]: false,
+    });
+  });
+
   it("will not let an account with a page be removed", async () => {
     const owner = await newUser();
     await insertPage(owner);
