@@ -40,6 +40,18 @@ describe("playBasis", () => {
     );
   });
 
+  // Playtesting spec: a playtester plays free before launch, member or not, and the play never counts for pay. The route
+  // sets `isPlaytester` only before launch, so a member who playtests plays as a member after it.
+  it("lets a playtester in as a playtester, before member and after free game", () => {
+    expect(playBasis({ game, viewer: { ...viewer, isPlaytester: true } })).toBe("playtest");
+    expect(playBasis({ game, viewer: { ...viewer, isPlaytester: true, isMember: true } })).toBe("playtest");
+    expect(playBasis({ game, viewer: { ...viewer, isPlaytester: false, isMember: true } })).toBe("member");
+    expect(
+      playBasis({ game: { ...game, freeToPlay: true }, viewer: { ...viewer, isPlaytester: true } }),
+    ).toBe("free_game");
+    expect(playBasis({ game, viewer: { ...viewer, isPlaytester: true, isStaff: true } })).toBe("staff");
+  });
+
   it("treats a maker as a stranger on someone else's game", () => {
     expect(playBasis({ game, viewer: { ...viewer, userId: "other-maker" } })).toBeNull();
   });

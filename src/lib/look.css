@@ -2115,6 +2115,13 @@ a.foot:active {
   width: fit-content;
 }
 
+/* Playtesters, above "See it on Ruken": a → link on its own line, before launch only (playtesting spec). */
+.live a.go {
+  display: flex;
+  width: fit-content;
+  margin-top: 1rem;
+}
+
 .live a.foot[data-off] {
   margin-top: 1.5rem;
   color: var(--sage);
@@ -4220,6 +4227,71 @@ main.gamepage {
   align-self: flex-start;
   min-height: var(--size-target);
   padding-block: 0.25rem;
+}
+
+/* Playtesting (playtesting spec). The badge says a game's maker lets players ask to playtest: a small pill of green
+   glass over the clip, above the game's name, a picture and not a control. A playtester's Play carries a small green
+   "Playtest" tag, with one line under it. */
+.playtestbadge {
+  align-self: flex-start;
+  width: fit-content;
+  margin: 0 0 0.5rem;
+  padding: 0.125rem 0.75rem;
+  border-radius: var(--radius-button);
+  background: var(--glass-safe);
+  box-shadow: var(--glass-edge);
+  color: var(--chalk);
+  font: var(--text-small);
+  font-weight: 600;
+  text-shadow: var(--glass-ink);
+}
+
+.playtestplay {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.playtestplay .button {
+  gap: 0.5rem;
+}
+
+.playtestplay .tag {
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-small);
+  font-weight: 600;
+  text-shadow: none;
+}
+
+.playtestplay .free,
+.playtestask .asked,
+.playtestask .problem {
+  margin: 0;
+  font-weight: 600;
+}
+
+.playtestask {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+/* Ask and Take back are → lines, so a button that looks like one: no fill, no edge. */
+button.go {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* On the blue play tile the Blue cannot be read, so the → lines there are chalk. */
+.gamepage .playtile .go {
+  color: var(--chalk);
 }
 
 .gamepage .costline {

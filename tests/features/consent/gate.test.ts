@@ -184,6 +184,8 @@ describe("the consent gate", () => {
     expect(actionOfRoute("/g/[game]/wishlist")).toBe("save");
     expect(actionOfRoute("/[handle=handle]/follow")).toBe("follow");
     expect(actionOfRoute("/me")).toBe("account");
+    expect(actionOfRoute("/g/[game]/playtest")).toBe("account");
+    expect(actionOfRoute("/p/[token]")).toBe("account");
   });
 });
 

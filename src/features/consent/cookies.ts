@@ -52,6 +52,7 @@ const RUKEN_COOKIES: readonly { name: string; path: string }[] = [
   { name: "rk_arrival", path: "/" },
   { name: "rk_welcome_back", path: "/" },
   { name: "rk_wish_pressed", path: "/" },
+  { name: "rk_playtest_pressed", path: "/" },
   { name: "rk_mark_pressed", path: "/" },
   { name: "rk_follow_pressed", path: "/" },
   { name: "ruken_sign_up", path: "/sign-up" },

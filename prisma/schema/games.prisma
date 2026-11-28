@@ -81,6 +81,8 @@ model Game {
   freeToPlay    Boolean       @default(false)
   /// Whether the game's page says how many people played it this week. The maker's choice: off until they turn it on.
   showsPlayerCount Boolean    @default(false)
+  /// Whether players may ask to playtest it before launch (the Playtesters page's switch). Off until the maker turns it on.
+  playtestAsking Boolean      @default(false)
   /// `owner/name` on GitHub.
   repoFullName  String?
   /// Null: the repository's own default branch.
@@ -135,6 +137,11 @@ model Game {
   // The launch feature's table points at a game; it is declared in launch.prisma.
   wishlist Wishlist[]
   reports  GameReport[]
+
+  // The playtest feature's tables point at a game; they are declared in playtest.prisma.
+  playtesters      Playtester[]
+  playtestLink     PlaytestLink?
+  playtestOldLinks PlaytestOldLink[]
 
   // The feed feature's tables point at a game; they are declared in feed.prisma.
   feedTastes     FeedTaste[]

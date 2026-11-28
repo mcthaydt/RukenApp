@@ -45,6 +45,7 @@
     takeOffAddress={data.takeOffAddress}
     pageAddress={data.pageAddress}
     testPlay={data.testPlay}
+    playtestersAddress={data.playtestersAddress}
     backdrop={data.backdrop}
     game={data.game}
     showsPlayerCount={data.showsPlayerCount}

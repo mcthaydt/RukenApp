@@ -162,6 +162,14 @@
   <h2>Games you want</h2>
   <p>Before Ruken opens, you can add games to a list. We keep your list.</p>
 
+  <h2>Playtesting</h2>
+  <p>
+    Before Ruken opens, you can ask to playtest a game, and a maker can invite you or send you a link. We keep
+    who asked or was invited to playtest which game, how (an ask, an invite or the link), the maker's answer,
+    and when. A maker's invite links are kept too, old ones included, so an old link still opens the game. All
+    of it is kept until your account, or the maker's, is deleted.
+  </p>
+
   <h2>If you make games</h2>
   <ul class="bullets">
     <li>
@@ -198,6 +206,10 @@
     <li>
       <strong>rk_wish_pressed</strong> remembers which game you pressed Wishlist on while signed out, so it goes
       on your list after you sign up. 30 minutes.
+    </li>
+    <li>
+      <strong>rk_playtest_pressed</strong> remembers which game you pressed Ask to playtest on while signed out,
+      so your ask is sent after you sign up. 30 minutes.
     </li>
     <li>
       <strong>rk_mark_pressed</strong> remembers which game you pressed Like, Save or Repost on while signed out,

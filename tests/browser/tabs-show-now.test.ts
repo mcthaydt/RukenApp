@@ -171,7 +171,9 @@ test("a game sent since Your turn's page was asked for is marked seen once it co
   test.setTimeout(120_000);
   const me = await signUp(page);
   await makeFriends(me, game.maker);
-  // Your turn's page is asked for ahead from Followed, with nothing sent yet; then a friend sends a game.
+  // Your turn's page is asked for ahead from Followed, with nothing sent yet; then a friend sends a game. The feed that
+  // sign-up lands on asks for it ahead too, so that page is left first and only this page's answer is waited for.
+  await page.goto("about:blank");
   const ahead = page.waitForResponse((answer) => answer.url().includes("/your-turn/__data.json"));
   await page.goto("/followed");
   await pageHasSettled(page);

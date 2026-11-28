@@ -16,5 +16,12 @@
 </script>
 
 {#key shown}
-  <Feed first={data.first} launch={data.launch} tune={data.tune} news={data.news} friends={data.friends} />
+  <Feed
+    first={data.first}
+    launch={data.launch}
+    tune={data.tune}
+    news={data.news}
+    friends={data.friends}
+    playtest={data.playtest}
+  />
 {/key}

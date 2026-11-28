@@ -9,6 +9,7 @@
   import FeedTop from "./FeedTop.svelte";
   import type { FeedPage } from "./service.ts";
   import type { Friend } from "../sends/sends.browser.ts";
+  import type { FeedPlaytest } from "../playtest/playtest.browser.ts";
 
   let props:
     | { signedIn: false }
@@ -21,11 +22,20 @@
         /** Friends sent games the person has not looked at: the dot on the Your turn tab. */
         news: boolean;
         friends: readonly Friend[];
+        /** The games that show this person the Playtest badge, and the ones they play as a playtester. */
+        playtest: FeedPlaytest;
       } = $props();
 </script>
 
 {#if props.signedIn && props.first.clips.length > 0}
-  <Feed first={props.first} launch={props.launch} tab="followed" news={props.news} friends={props.friends} />
+  <Feed
+    first={props.first}
+    launch={props.launch}
+    tab="followed"
+    news={props.news}
+    friends={props.friends}
+    playtest={props.playtest}
+  />
 {:else}
   <FeedTop on="followed" news={props.signedIn && props.news} />
 

@@ -38,7 +38,7 @@ export async function addGame(
 
 export interface SessionSetup {
   readonly userId: string | null;
-  readonly basis: "member" | "free_game" | "staff" | "own_game";
+  readonly basis: "member" | "free_game" | "staff" | "own_game" | "playtest";
   /** When the session started, as text. */
   readonly startedAt: string;
   /** How many beats it sent, and how far apart (seconds). The first comes one step after the start. */

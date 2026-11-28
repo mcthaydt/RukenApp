@@ -14,6 +14,7 @@
   import { onMount } from "svelte";
   import { quietVideo } from "../../../lib/quiet-video.ts";
   import { WishlistButton } from "../../../features/launch/launch.browser.ts";
+  import { PlaytestAsk, PlaytestBadge, PlaytestPlay } from "../../../features/playtest/playtest.browser.ts";
   import { ReportSheet, type ReportSheetControl } from "../../../features/moderation/moderation.browser.ts";
   import { ShareSheet, type ShareSheetControl } from "../../../features/feed/feed.browser.ts";
   import { backToFeed } from "../../../lib/page-moves.ts";
@@ -106,6 +107,9 @@
       </div>
       <a class="back" href="/" aria-label="Back to the feed" onclick={backFromHere}><Icon name="back" /></a>
       <div class="heroname">
+        {#if data.playtest.badge}
+          <PlaytestBadge />
+        {/if}
         <h1>{data.name}</h1>
         <p>{data.oneLine}</p>
       </div>
@@ -113,7 +117,9 @@
 
     <div class="side">
       <div class="card cell playtile">
-        {#if data.launch.before}
+        {#if data.playtest.action === "play"}
+          <PlaytestPlay slug={data.slug} buttonClass="button play" />
+        {:else if data.launch.before}
           <WishlistButton
             slug={data.slug}
             wished={data.launch.wished.includes(data.slug)}
@@ -121,18 +127,22 @@
             back={`/g/${data.slug}`}
             buttonClass="button"
           />
+          <PlaytestAsk slug={data.slug} look={data.playtest} back={`/g/${data.slug}`} />
         {:else}
           <a class="button" href={`/g/${data.slug}/play`}>Play</a>
         {/if}
-        <div class="costrow">
-          {#if data.cost === "join"}
-            <p class="costline">Members play every game. {data.price} a month.</p>
-            <a class="button join" href={joinAt}>Join</a>
-            <p class="costline">Tax is added where it applies.</p>
-          {:else}
-            <p class="costline">{COST_WORDS[data.cost]}</p>
-          {/if}
-        </div>
+        <!-- A playtester's one line is that they play free until launch (PlaytestPlay), so no cost is said too. -->
+        {#if data.playtest.action !== "play"}
+          <div class="costrow">
+            {#if data.cost === "join"}
+              <p class="costline">Members play every game. {data.price} a month.</p>
+              <a class="button join" href={joinAt}>Join</a>
+              <p class="costline">Tax is added where it applies.</p>
+            {:else}
+              <p class="costline">{COST_WORDS[data.cost]}</p>
+            {/if}
+          </div>
+        {/if}
         <div class="ways">
           <button
             type="button"

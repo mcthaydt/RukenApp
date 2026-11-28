@@ -14,6 +14,7 @@ import { addDraft, addGame, giveRealClips } from "./support/game.ts";
 import { asInstalled } from "./support/installed.ts";
 import { atLaunch, beforeLaunch } from "./support/launch.ts";
 import { wordsHaveSettled } from "./support/look.ts";
+import { playtestScene } from "./support/playtest.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // No two buttons or links ever sit on top of each other, on any screen, upright or sideways, before launch (Wishlist)
@@ -116,8 +117,10 @@ function overlaps(page: Page): Promise<string[]> {
       }
       return { thing, left, top, right, bottom };
     };
+    // With a sheet open over the screen, only its own buttons can be pressed: the screen behind is shut away.
+    const sheet = [...document.querySelectorAll("dialog")].find((one) => one.matches(":modal"));
     const controls = [
-      ...document.querySelectorAll("a, button, input, select, textarea, summary, [role='button']"),
+      ...(sheet ?? document).querySelectorAll("a, button, input, select, textarea, summary, [role='button']"),
     ]
       .filter((thing) => thing.closest("[aria-hidden='true'], [inert]") === null)
       .filter((thing) => thing.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
@@ -201,18 +204,24 @@ function spilling(page: Page): Promise<string[]> {
 }
 
 /** The feed brought to the game's clip, whose maker has a page; Followed shows it only to someone following them. */
-async function onTheMakersClip(page: Page, path: string): Promise<void> {
-  const clip = page.locator(`section[data-slug="${live.slug}"]`).first();
+async function onTheMakersClip(page: Page, path: string, slug: string): Promise<void> {
+  const clip = page.locator(`section[data-slug="${slug}"]`).first();
   if (path === "/followed" && (await clip.count()) === 0) return;
   await clip.scrollIntoViewIfNeeded();
   await expect(clip.locator(".credit")).toBeVisible();
   await page.waitForFunction(
     (slug) => document.querySelector(`section[data-slug="${slug}"]`)?.getAttribute("data-current") === "true",
-    live.slug,
+    slug,
   );
 }
 
-async function expectNothingOverlaps(page: Page, paths: readonly string[], when: string): Promise<void> {
+/** `clip` is the game whose clip the feed is brought to: the one whose maker has a page, unless another is named. */
+async function expectNothingOverlaps(
+  page: Page,
+  paths: readonly string[],
+  when: string,
+  clip: string = live.slug,
+): Promise<void> {
   for (const size of SIZES) {
     await page.setViewportSize({ width: size.width, height: size.height });
     for (const path of paths) {
@@ -241,7 +250,7 @@ async function expectNothingOverlaps(page: Page, paths: readonly string[], when:
       if (path === "/" || path === "/followed") {
         // The feed's first screen as it opens, with its tips; then the clip with a maker, the tallest column.
         expect.soft(await overlaps(page), `${where}, first screen`).toEqual([]);
-        await onTheMakersClip(page, path);
+        await onTheMakersClip(page, path, clip);
         await wordsHaveSettled(page);
       }
       // Soft, so one run lists every screen and size that fails, not only the first.
@@ -287,6 +296,31 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
   await beforeLaunch(context);
   await expectNothingOverlaps(page, paths, "before launch");
   await atLaunch(context);
+});
+
+// Playtesting, before launch, at its fullest: the maker's Playtesters page with someone asking and someone playing, its
+// invite sheet, and a playtester's, an asker's and a signed-out person's feed and game page (the badge, Play with its
+// tag, the free line, You asked and Take back).
+test("playtesting's screens: no two buttons overlap, upright or sideways", async ({ browser }) => {
+  test.setTimeout(240_000);
+  const scene = await playtestScene(browser);
+  try {
+    const when = "before launch, playtesting";
+    await expectNothingOverlaps(scene.maker.page, [scene.playtesters, `${scene.playtesters}?invite`], when);
+    await expectNothingOverlaps(scene.tester.page, ["/", `/g/${scene.slug}`], when, scene.slug);
+    // The badge is on the clip for someone who can still ask and for someone signed out; the check measures it.
+    for (const { page } of [scene.asker, scene.onlooker]) {
+      await page.goto("/");
+      await pageHasSettled(page);
+      await onTheMakersClip(page, "/", scene.slug);
+      await expect(
+        page.locator(`section[data-slug="${scene.slug}"][data-current="true"] .playtestbadge`),
+      ).toBeVisible();
+      await expectNothingOverlaps(page, ["/", `/g/${scene.slug}`], when, scene.slug);
+    }
+  } finally {
+    await scene.close();
+  }
 });
 
 test("the maker's own games and Live screen: no two buttons overlap, before launch and after", async ({

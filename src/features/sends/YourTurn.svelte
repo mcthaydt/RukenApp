@@ -17,6 +17,10 @@
     still: string | null;
     from: string | null;
     sentAt: string;
+    /** A playtest row (a maker let them in or invited them) has its line written for it and no Stop. */
+    kind?: "send" | "playtest";
+    /** The line under the name, when the route wrote it; a send's is "From <name>". */
+    line?: string | null;
   }
 
   let {
@@ -92,12 +96,13 @@
             {/if}
             <span class="words">
               <strong>{row.name}</strong>
-              <span>{SEND_WORDS.from(from(row))}</span>
+              <span>{row.line ?? SEND_WORDS.from(from(row))}</span>
               <span class="when">{whenWords(new Date(row.sentAt), now, zone)}</span>
             </span>
           </a>
           <form method="POST" action="/your-turn/remove" onsubmit={(event) => void remove(event, row.id)}>
             <input type="hidden" name="id" value={row.id} />
+            <input type="hidden" name="kind" value={row.kind ?? "send"} />
             <button class="quiet remove" aria-label={SEND_WORDS.remove(row.name)}
               ><Icon name="remove" /></button
             >

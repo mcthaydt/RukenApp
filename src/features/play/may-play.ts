@@ -2,19 +2,22 @@
 // (the reason a play was allowed) and where to send a person who may not play.
 
 /** Why a play was allowed. Only `member` plays count for pay (design 6). */
-export type PlayBasis = "member" | "free_game" | "staff" | "own_game";
+export type PlayBasis = "member" | "free_game" | "staff" | "own_game" | "playtest";
 
 /** The person who pressed Play, as the page knows them. */
 export interface PlayViewer {
   userId: string;
   isStaff: boolean;
   isMember: boolean;
+  /** Let in to playtest this game before launch (the route asks the playtest feature, so play does not import it). */
+  isPlaytester?: boolean;
 }
 
 /**
  * Why this person may play this game, or null when they may not (the paywall). When more than one reason holds, the
- * first of own game, staff, free game and member wins: design 6 says the first three never count for pay, so a member's
- * play of a free game must not be recorded as a member's.
+ * first of own game, staff, free game, playtest and member wins: design 6 says the first three never count for pay, so a
+ * member's play of a free game must not be recorded as a member's, and a playtester's play before launch never counts
+ * either (playtesting spec), member or not.
  */
 export function playBasis(input: {
   game: { freeToPlay: boolean; makerUserId: string };
@@ -24,6 +27,7 @@ export function playBasis(input: {
   if (viewer !== null && viewer.userId === game.makerUserId) return "own_game";
   if (viewer?.isStaff === true) return "staff";
   if (game.freeToPlay) return "free_game";
+  if (viewer?.isPlaytester === true) return "playtest";
   if (viewer?.isMember === true) return "member";
   return null;
 }

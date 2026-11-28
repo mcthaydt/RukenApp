@@ -25,6 +25,9 @@ describe("what every route does before a yes", () => {
       "/api/auth/[...path]",
       "/me",
       "/make/new",
+      "/g/[game]/playtest",
+      "/p/[token]",
+      "/make/[game]/playtesters",
     ]) {
       expect(routeKind(id), id).toBe("gated");
     }

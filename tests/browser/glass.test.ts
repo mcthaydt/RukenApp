@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { gameWhere } from "./support/game.ts";
+import { playtestScene } from "./support/playtest.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The glass is clear (the owner, 2026-11-22: "a lot more transparent", darkened by "maybe 10" percent), so over a white
@@ -95,5 +96,35 @@ test("words and pictures on the glass stand out over a white clip", async ({ pag
     const { halo, glyph } = await haloContrast(page, thing);
     expect(glyph, `${name} is still chalk`).toBeGreaterThanOrEqual(0.85);
     expect(halo, `${name} stands off the white by 4.5 to 1 or more`).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
+// Playtesting's marks over a clip: the Playtest badge an asker sees, and the free line under a playtester's Play.
+test("playtesting's badge and free line stand out over a white clip", async ({ browser }) => {
+  test.setTimeout(240_000);
+  const scene = await playtestScene(browser);
+  try {
+    for (const [name, page, mark] of [
+      ["the Playtest badge", scene.asker.page, ".playtestbadge"],
+      ["the free line", scene.tester.page, ".playtestplay .free"],
+    ] as const) {
+      await page.goto("/");
+      const clip = page.locator(`section[data-slug="${scene.slug}"]`).first();
+      await clip.scrollIntoViewIfNeeded();
+      const thing = clip.locator(mark);
+      await expect(thing, name).toBeVisible();
+      await page.addStyleTag({
+        content:
+          "section[data-slug] video { visibility: hidden !important; } section[data-slug] { background: #fff !important; }",
+      });
+      await page.evaluate(
+        () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+      );
+      const { halo, glyph } = await haloContrast(page, thing);
+      expect(glyph, `${name} is still chalk`).toBeGreaterThanOrEqual(0.85);
+      expect(halo, `${name} stands off the white by 4.5 to 1 or more`).toBeGreaterThanOrEqual(4.5);
+    }
+  } finally {
+    await scene.close();
   }
 });

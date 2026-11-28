@@ -1,6 +1,7 @@
 import { feedServices, TAB_DATA } from "../features/feed/feed.ts";
 import { isKnownAdultCaller } from "../features/accounts/accounts.ts";
 import { launchServices } from "../features/launch/launch.ts";
+import { playtestServices } from "../features/playtest/playtest.ts";
 import { sendsServices } from "../features/sends/sends.ts";
 import type { PageServerLoad } from "./$types";
 
@@ -14,15 +15,22 @@ export const load: PageServerLoad = async ({ locals, cookies, depends }) => {
   const feed = feedServices();
   const userId = locals.caller.kind === "user" ? locals.caller.userId : null;
   const caller = locals.caller;
-  const [first, launch, learning, news, friends] = await Promise.all([
+  const launchNow = launchServices().now(cookies);
+  const isAdult = () => isKnownAdultCaller(caller);
+  const [first, launch, learning, news, friends, playtest] = await Promise.all([
     feed.askingOf(caller, cookies).then((asking) => feed.service.page(null, asking, feed.viewerOf(caller))),
     launchServices().screenFor(userId, cookies),
     userId === null ? Promise.resolve(null) : feed.taste.learningOf(userId),
-    // Your turn: the tab's dot, and the faces for "Send to a friend" in the share sheet.
+    // Your turn: the tab's dot (a sent game or a playtest row), and the faces for "Send to a friend" in the share sheet.
     userId === null
       ? Promise.resolve(false)
-      : sendsServices().hasNew(userId, () => isKnownAdultCaller(caller)),
+      : Promise.all([
+          sendsServices().hasNew(userId, isAdult),
+          playtestServices().service.hasNew(userId, isAdult, launchNow),
+        ]).then(([sent, playtest]) => sent || playtest),
     userId === null ? Promise.resolve(null) : sendsServices().friendsOf(userId),
+    // The badge and a playtester's Play, for every game at once, so the feed's later pages show them too.
+    playtestServices().service.feedStateFor(userId, launchNow),
   ]);
-  return { first, launch, tune: learning === "on", news, friends };
+  return { first, launch, tune: learning === "on", news, friends, playtest };
 };

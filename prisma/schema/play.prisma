@@ -5,12 +5,14 @@
 // Prisma cannot express the CHECK rules or the triggers, so they are written by hand at the end of the migration and
 // covered by tests/features/play/schema.pg.test.ts.
 
-/// Why a play was allowed. Only `member` plays count for pay (design 6): a free game, staff and a maker's own game never do.
+/// Why a play was allowed. Only `member` plays count for pay (design 6): a free game, staff, a maker's own game and a
+/// playtester's play before launch never do.
 enum PlayBasis {
   member
   free_game
   staff
   own_game
+  playtest
 }
 
 /// A play pass: what lets a browser load one pull of one game's files. A pass's id leads to one row, and that row to

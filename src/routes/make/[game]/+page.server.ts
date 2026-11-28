@@ -145,10 +145,8 @@ export const load: PageServerLoad = async (event) => {
     const send = liveSendOf(game);
     // How many people want it, counted from stored rows each time (wishlist spec, "What a maker sees").
     const launch = launchServices();
-    const wished = wishlistCountWords(
-      await launch.wishlist.countFor(game.id, userId),
-      !isOpen(launch.now(event.cookies)),
-    );
+    const before = !isOpen(launch.now(event.cookies));
+    const wished = wishlistCountWords(await launch.wishlist.countFor(game.id, userId), before);
     return {
       ...base,
       view: "live" as const,
@@ -163,6 +161,8 @@ export const load: PageServerLoad = async (event) => {
       // The maker's way to play it: the files waiting for review, else the live copy (before launch the game's own page
       // shows Wishlist where Play goes, for its maker too).
       testPlay: game.testPlay ? `/make/${game.slug}/play` : null,
+      // Playtesting is before launch only (playtesting spec).
+      playtestersAddress: before ? `/make/${game.slug}/playtesters` : null,
       backdrop,
       game: liveLaidOut(game),
       showsPlayerCount: game.showsPlayerCount,

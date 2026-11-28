@@ -54,6 +54,10 @@ export const GATED: readonly string[] = [
   "/join",
   "/g/[game]/play",
   "/g/[game]/wishlist",
+  // Ask to playtest and take it back, and opening a maker's invite link: each keeps a row, and signed out a cookie for
+  // the way back from sign-up (the Playtesters page and its actions are under /make).
+  "/g/[game]/playtest",
+  "/p/[token]",
   // Following a maker keeps a row, and signed out a cookie for the way back from sign-up.
   "/[handle=handle]/follow",
   "/api/auth",

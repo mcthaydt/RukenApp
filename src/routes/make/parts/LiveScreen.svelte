@@ -15,6 +15,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import type { FixCardData, LaidOutGame } from "../laid-out.ts";
+  import { PLAYTEST_WORDS } from "../../../features/playtest/playtest.browser.ts";
   import FixCard from "./FixCard.svelte";
   import GameBackdrop from "./GameBackdrop.svelte";
   import GameLaidOut from "./GameLaidOut.svelte";
@@ -28,6 +29,7 @@
     takeOffAddress,
     pageAddress,
     testPlay,
+    playtestersAddress,
     backdrop,
     game,
     showsPlayerCount,
@@ -46,6 +48,8 @@
     pageAddress: string;
     /** Where the maker plays it themselves, or null when there is nothing to play. */
     testPlay: string | null;
+    /** The game's Playtesters page, before launch; null from launch on. */
+    playtestersAddress: string | null;
     backdrop: { upright: string | null; wide: string | null };
     game: LaidOutGame;
     /** Whether the game's page says how many people played it this week. */
@@ -134,6 +138,9 @@
     {/if}
     {#if testPlay !== null}
       <a class="button outline testplay" data-sveltekit-preload-data="off" href={testPlay}>Test play</a>
+    {/if}
+    {#if playtestersAddress !== null}
+      <a class="go" href={playtestersAddress}>{PLAYTEST_WORDS.link}</a>
     {/if}
     <a class="foot" href={pageAddress}>See it on Ruken</a>
     <a class="foot" href="/make">Back to your games</a>
