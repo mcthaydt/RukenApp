@@ -1289,6 +1289,11 @@
       translate: none;
       max-width: calc(100% - 0.75rem - 5.5rem - 1.5rem);
     }
+    /* On the first clip with "You're all caught up" too, the tips stand under the line (a 2.75rem line, then a gap),
+       where they first stood over it and hid it (review 3 of #440). */
+    .caughtup + .hints {
+      top: calc(max(0.75rem, env(safe-area-inset-top)) + var(--size-target) + 0.75rem + 2.75rem + 0.5rem);
+    }
   }
   /* A short phone held upright (an iPhone SE, 568px): the maker, their name and five round buttons stand taller than
      the room between the top bar and the bar, so the maker's picture went under Search and the tabs. Here the column
@@ -1341,9 +1346,9 @@
     .hints {
       top: calc(0.75rem + var(--size-target) + 0.5rem);
     }
-    /* On the first clip with the line too, the hints stand under it. */
+    /* On the first clip with the line too, the hints stand under it, with a gap (they first stood right against it). */
     .caughtup + .hints {
-      top: calc(0.75rem + var(--size-target) + 3.5rem);
+      top: calc(max(0.75rem, env(safe-area-inset-top)) + var(--size-target) + 0.75rem + 2.75rem + 0.5rem);
     }
     /* The round buttons stand in a column of their own just left of the bar, from the bottom up: the bar takes the
        middle of the right edge, so under it there is no room for them (the owner, 2026-11-27: they sat on each other). */

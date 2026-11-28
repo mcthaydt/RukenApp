@@ -27,6 +27,13 @@ const LINE = "You're all caught up";
 /** The address the stand-in gives its page, so the screen's next ask can be seen to use it. */
 const STAND_IN_NEXT = "stand-in-next-page";
 
+/** The small windows the owner named, upright and sideways. */
+const SMALL_SIZES = [
+  { width: 320, height: 568 },
+  { width: 375, height: 667 },
+  { width: 667, height: 375 },
+];
+
 const clips = (page: Page): Locator => page.locator("section[data-slug]");
 
 /** Whether two boxes share any area. */
@@ -130,12 +137,7 @@ test("after the new games, the feed says You're all caught up, and keeps going",
       .evaluate((section) => section.querySelector("video") !== null),
   ).toBe(true);
   // It is a line to read, never in the way: it covers no control, at this window and at the small ones the owner named.
-  const sizes = [
-    page.viewportSize(),
-    { width: 320, height: 568 },
-    { width: 375, height: 667 },
-    { width: 667, height: 375 },
-  ];
+  const sizes = [page.viewportSize(), ...SMALL_SIZES];
   for (const size of sizes) {
     if (size === null) continue;
     await page.setViewportSize(size);
@@ -162,4 +164,62 @@ test("after the new games, the feed says You're all caught up, and keeps going",
   ).toHaveCount(0);
   for (let index = firstCount + 4; !asked.includes(STAND_IN_NEXT); index++) await goTo(page, index);
   expect(asked.filter((after) => after === STAND_IN_NEXT)).toHaveLength(1);
+});
+
+// A person caught up from the very first clip, opening Ruken on a device that has not seen the first open's tips: the
+// line and the tips are both on the first clip, and neither may cover the other or any control (review 3 of #440: on an
+// upright phone the tips stood where the line does and hid it). The first page comes in the page itself, so the stand-in
+// here is at the same edge in the page: the page's own first page, told that the person is caught up at its first clip.
+test("caught up from the first clip, the line and the first open's tips stand apart", async ({ page }) => {
+  test.setTimeout(120_000);
+  let first: string | null = null;
+  await page.route(
+    (address) => address.pathname === "/",
+    async (route) => {
+      if (route.request().resourceType() !== "document") {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      const html = await response.text();
+      // The page carries its first page as data, in the shape `first:{next:…,clips:[{key:"…"`.
+      const at = html.lastIndexOf("first:{");
+      const found = at === -1 ? null : /clips:\[\{key:"([^"]+)"/.exec(html.slice(at));
+      first = found?.[1] ?? null;
+      const body =
+        found === null || first === null
+          ? html
+          : `${html.slice(0, at)}first:{caughtUp:"${first}",${html.slice(at + "first:{".length)}`;
+      await route.fulfill({ response, body });
+    },
+  );
+  const sizes = [page.viewportSize(), ...SMALL_SIZES];
+  for (const size of sizes) {
+    if (size === null) continue;
+    await page.setViewportSize(size);
+    // The tips show again at each size: the note that they were seen is forgotten.
+    await page.evaluate(() => {
+      try {
+        localStorage.removeItem("rk_seen_hints");
+      } catch {
+        // A blank page before the first screen has no storage, and nothing to forget.
+      }
+    });
+    await page.goto("/");
+    await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+    expect(first, "the page's first page names its first clip").not.toBeNull();
+    const clip = clips(page).first();
+    const line = clip.getByText(LINE);
+    const tips = clip.locator(".hints");
+    const where = `${String(size.width)}×${String(size.height)}`;
+    await expect(line, where).toBeInViewport({ ratio: 1 });
+    await expect(tips, where).toBeInViewport({ ratio: 1 });
+    const lineBox = await boxOf(line);
+    const tipsBox = await boxOf(tips);
+    expect(overlap(lineBox, tipsBox), `the tips cover the line at ${where}`).toBe(false);
+    for (const control of await controlBoxes(page)) {
+      expect(overlap(lineBox, control.box), `the line covers "${control.name}" at ${where}`).toBe(false);
+      expect(overlap(tipsBox, control.box), `the tips cover "${control.name}" at ${where}`).toBe(false);
+    }
+  }
 });
