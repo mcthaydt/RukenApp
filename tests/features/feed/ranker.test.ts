@@ -74,7 +74,7 @@ const PRIVATE_PAGE: RankedPage = {
     { gameId: "id-a", slot: 0, key: "k3" },
   ],
   next: "private-cursor",
-  caughtUpAt: NOW - 1000,
+  caughtUpAt: 1,
   ask: { index: 1, gameId: "id-a" },
 };
 
@@ -157,7 +157,7 @@ describe("Good pick?", () => {
 });
 
 describe("the feed through a ranker", () => {
-  it("turns the ranker's ids into clips, passes caughtUpAt, and leaves out a game no longer live", async () => {
+  it("turns the ranker's ids into clips, marks where the person is caught up, and leaves out a game no longer live", async () => {
     const { ranker } = stubRanker(() => Promise.resolve(PRIVATE_PAGE));
     const { service, lines } = serviceWith({ privateRanker: () => ranker });
 
@@ -178,10 +178,23 @@ describe("the feed through a ranker", () => {
       marks: { likes: 0, liked: false, saved: false, reposted: false },
     });
     expect(page.next).toBe("p.private-cursor");
-    expect(page.caughtUpAt).toBe(NOW - 1000);
+    // Caught up at the second item, which is no longer live: the line goes on the next clip shown.
+    expect(page.caughtUp).toBe("k3");
     // The crowd is never asked Good pick: nothing about them is kept (learned feed spec D4).
     expect(page.ask).toBeUndefined();
     expect(lines).toEqual([]);
+  });
+
+  it("says nothing of being caught up when the ranker does not, or when nothing shown is left after that point", async () => {
+    for (const caughtUpAt of [null, 3]) {
+      const { ranker } = stubRanker(() => Promise.resolve({ ...PRIVATE_PAGE, caughtUpAt }));
+      const { service } = serviceWith({ privateRanker: () => ranker });
+      expect((await service.page(null)).caughtUp).toBeUndefined();
+    }
+    // Caught up at the very first item: the line is on the first clip.
+    const { ranker } = stubRanker(() => Promise.resolve({ ...PRIVATE_PAGE, caughtUpAt: 0 }));
+    const { service } = serviceWith({ privateRanker: () => ranker });
+    expect((await service.page(null)).caughtUp).toBe("k1");
   });
 
   it("hands the ranker plain facts: the live games under 18+, the week's member beats, the time and the crowd", async () => {

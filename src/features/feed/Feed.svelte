@@ -99,6 +99,10 @@
     first.ask ? { [first.ask.key]: first.ask } : {},
   );
 
+  // The clips "You're all caught up" goes on, by key: where each page said the person had seen everything new.
+  // svelte-ignore state_referenced_locally
+  let caughtUp = $state<string[]>(first.caughtUp === undefined ? [] : [first.caughtUp]);
+
   function sayGotIt(): void {
     gotIt = true;
     clearTimeout(gotItTimer);
@@ -277,6 +281,7 @@
       const waiting = current >= had;
       clips = [...clips, ...page.clips.filter((clip) => !have.has(clip.key))];
       if (page.ask) asks = { ...asks, [page.ask.key]: page.ask };
+      if (page.caughtUp !== undefined) caughtUp = [...caughtUp, page.caughtUp];
       next = page.next;
       more = "idle";
       if (waiting) {
@@ -588,6 +593,11 @@
             answered(clip.key, index);
           }}
         />
+
+        {#if caughtUp.includes(clip.key)}
+          <!-- One line to read on the first clip the person has seen before; the feed keeps going under it. -->
+          <p class="caughtup">You're all caught up</p>
+        {/if}
 
         {#if index === 0 && hint !== null}
           <div class="hints">
@@ -982,6 +992,27 @@
   .hints p {
     margin: 0;
   }
+  /* "You're all caught up": a frosted line just under the top bar, a word to read and never in the way of a press. */
+  .caughtup {
+    position: absolute;
+    top: calc(max(0.75rem, env(safe-area-inset-top)) + var(--size-target) + 0.75rem);
+    left: 50%;
+    z-index: 2;
+    translate: -50% 0;
+    width: max-content;
+    max-width: calc(100% - 2rem);
+    margin: 0;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-button);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+    color: var(--chalk);
+    text-shadow: var(--glass-ink);
+    text-align: center;
+    pointer-events: none;
+  }
   .hints p + p {
     margin-top: 0.25rem;
     font: var(--text-small);
@@ -1179,6 +1210,10 @@
     /* Under the top bar, where the band cannot cover them either. */
     .hints {
       top: calc(0.75rem + var(--size-target) + 0.5rem);
+    }
+    /* On the first clip with the line too, the hints stand under it. */
+    .caughtup + .hints {
+      top: calc(0.75rem + var(--size-target) + 3.5rem);
     }
     /* The round buttons stand in the bar's column, under it, centred on it. */
     .side {

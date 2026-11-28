@@ -92,14 +92,15 @@ export interface FeedClip {
 }
 
 /**
- * A page of the feed, and the address of the one after it (null only when no game is live). `caughtUpAt` is there only
- * when the ranker gave it. `ask` is the Good pick card: shown on the clip `key`, about the game `slug`; only a person the
+ * A page of the feed, and the address of the one after it (null only when no game is live). `caughtUp` is the clip
+ * "You're all caught up" goes on, there only when the ranker said where the person is caught up: the first clip shown at
+ * or after that point, since a game the ranker named may be left out. `ask` is the Good pick card: shown on the clip `key`, about the game `slug`; only a person the
  * feed learns from is asked, and only once about a game.
  */
 export interface FeedPage {
   clips: FeedClip[];
   next: string | null;
-  caughtUpAt?: number;
+  caughtUp?: string;
   ask?: { key: string; slug: string; name: string };
 }
 
@@ -334,7 +335,11 @@ export function createFeedService(deps: FeedServiceDeps) {
         clipOf(key, game, makers.get(game.makerUserId), followed.has(game.makerUserId), viewerId, marks),
       ),
     };
-    if (ranked.caughtUpAt !== null) result.caughtUpAt = ranked.caughtUpAt;
+    if (ranked.caughtUpAt !== null) {
+      const shownKeys = new Set(shown.map(({ key }) => key));
+      const at = ranked.items.slice(ranked.caughtUpAt).find((item) => shownKeys.has(item.key))?.key;
+      if (at !== undefined) result.caughtUp = at;
+    }
     const ask = ranked.ask;
     if (ask !== null && asking.kind === "full" && deps.asking !== undefined) {
       const asked = byId.get(ask.gameId);

@@ -1,11 +1,13 @@
 import { systemClock } from "../../lib/clock.ts";
 import { prisma } from "../../lib/server/db.ts";
 import { optionalEnv } from "../../lib/server/env.ts";
+import type { Cookies } from "@sveltejs/kit";
 import type { Caller } from "../accounts/accounts.ts";
+import { hasConsent } from "../consent/consent.ts";
 import { gamesServices } from "../games/games.ts";
 import { pagesServices } from "../pages/pages.ts";
 import { playServices } from "../play/play.ts";
-import { askingFor, readFeedPublic, type Asking, type FeedPublic } from "./feed-public.ts";
+import { askingOf, readFeedPublic, type Asking, type FeedPublic } from "./feed-public.ts";
 import { createMarks, type Marks } from "./marks.ts";
 import type { Ranker } from "./ranker.ts";
 import { createSearch, type Search } from "./search.ts";
@@ -25,8 +27,8 @@ export interface FeedServices {
   listOf(userId: string, kind: "save" | "repost"): Promise<MarkedGame[]>;
   /** Search from the feed's top bar: live games and their makers. */
   search: Search;
-  /** Who the ranker is told is asking, from who sent the request and FEED_PUBLIC. */
-  askingOf(caller: Caller): Asking;
+  /** Who the ranker is told is asking, from who sent the request, whether their browser said yes to cookies, and FEED_PUBLIC. */
+  askingOf(caller: Caller, cookies: Pick<Cookies, "get">): Promise<Asking>;
   /** The signed-in person a page is for, so it can mark the makers they follow and what they pressed; null for anyone else. */
   viewerOf(caller: Caller): string | null;
 }
@@ -96,18 +98,12 @@ export function feedServices(): FeedServices {
       media: (key) => gamesServices().media(key),
     }),
     viewerOf: (caller) => (caller.kind === "user" ? caller.userId : null),
-    askingOf: (caller) => {
-      const settings = publicSettings();
-      // The cookie yes, the age and a parent's yes are read with the learned feed, which is the first ranker that can use
-      // them: until then everyone is the crowd, whatever FEED_PUBLIC says.
-      return askingFor(settings, {
-        userId: caller.kind === "user" ? caller.userId : null,
-        consented: false,
-        adult: false,
-        parentSaidYes: false,
-        learnFromMe: true,
-      });
-    },
+    askingOf: (caller, cookies) =>
+      askingOf(
+        publicSettings(),
+        { userId: caller.kind === "user" ? caller.userId : null, consented: hasConsent(cookies) },
+        (userId) => taste.learningOf(userId),
+      ),
   };
   return shared;
 }
