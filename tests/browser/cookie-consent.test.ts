@@ -92,6 +92,12 @@ test("nothing is kept before a yes: every public screen opens, and nothing is se
     await expect(page.locator("body")).toBeVisible();
     // The legal pages open where they are, never behind the notice.
     if (address === "/privacy" || address === "/terms") await expect(page).toHaveURL(address);
+    // "What we keep" is the page the notice sends a person to read, so the notice stays off it and never covers it
+    // (the owner, 2026-11-28: "it makes it too hard to read because the notice covers it").
+    if (address === "/privacy") {
+      await pageHasSettled(page);
+      await expect(asking(page)).toHaveCount(0);
+    }
   }
   // A tap on the maker's link opens it, and is not counted.
   const tapped = await page.request.get(`/${maker.handle}/out/${maker.linkIds[0] ?? ""}`, {
