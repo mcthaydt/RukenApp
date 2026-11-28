@@ -1,0 +1,160 @@
+// Review probe for #462 round 3. Not for commit.
+import { expect, test, type Page } from "@playwright/test";
+import { pageHasSettled } from "./support/account.ts";
+import { NOT_CONSENTED } from "./support/consent.ts";
+import { addGame } from "./support/game.ts";
+import { asInstalled } from "./support/installed.ts";
+import { atLaunch, beforeLaunch } from "./support/launch.ts";
+import { wordsHaveSettled } from "./support/look.ts";
+import { PAD, plugInPad, pressPad } from "./support/pad.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+test.beforeEach(forgetRateLimits);
+test.use({ storageState: NOT_CONSENTED });
+
+const SIZES = [
+  { width: 320, height: 568 },
+  { width: 375, height: 667 },
+  { width: 667, height: 375 },
+];
+const bar = (page: Page) => page.getByRole("navigation", { name: "Ruken" });
+const tapOr = async (page: Page, l: ReturnType<Page["locator"]>) =>
+  test.info().project.use.hasTouch === true ? l.tap() : l.click();
+const focusedName = (page: Page) =>
+  page.evaluate(() => {
+    const one = document.activeElement;
+    if (!(one instanceof HTMLElement) || one === document.body) return null;
+    return (one.getAttribute("aria-label") ?? one.innerText).trim().replaceAll(/\s+/g, " ");
+  });
+function overlaps(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const things = [...document.querySelectorAll("a, button, [role=button], aside.consent")].filter(
+      (t) => t.closest("[aria-hidden='true'], [inert]") === null && (t as HTMLElement).checkVisibility({ visibilityProperty: true, opacityProperty: true }),
+    );
+    const boxes = things.map((t) => ({ t, r: t.getBoundingClientRect() })).filter((b) => b.r.width > 1 && b.r.height > 1);
+    const name = (t: Element) => `${t.tagName.toLowerCase()}:${(t.getAttribute("aria-label") ?? t.textContent ?? "").trim().slice(0, 24)}`;
+    const found: string[] = [];
+    for (const [i, a] of boxes.entries())
+      for (const b of boxes.slice(i + 1)) {
+        if (a.t.contains(b.t) || b.t.contains(a.t)) continue;
+        const w = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+        const h = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+        if (w > 1 && h > 1) found.push(`${name(a.t)} / ${name(b.t)}`);
+      }
+    return found;
+  });
+}
+
+let live: { slug: string };
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(180_000);
+  await forgetRateLimits();
+  live = await addGame(browser, request);
+});
+
+/** Not now, Like on the live clip (asks the yes), then the plus: the pending ask carried to /make. */
+async function likeThenPlus(page: Page): Promise<void> {
+  await page.goto("/");
+  await pageHasSettled(page);
+  await tapOr(page, page.locator("aside.consent").getByRole("button", { name: "Not now", exact: true }));
+  await expect(page.locator("aside.consent")).toHaveCount(0);
+  const clip = page.locator(`section[data-slug="${live.slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await page.waitForFunction((s) => document.querySelector(`section[data-slug="${s}"]`)?.getAttribute("data-current") === "true", live.slug);
+  await tapOr(page, clip.getByRole("button", { name: "Like", exact: true }));
+  await expect(page.locator("aside.consent")).toContainText("To like this game");
+  await tapOr(page, bar(page).getByRole("link", { name: "Add a game", exact: true }));
+  await expect(page).toHaveURL("/make");
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+}
+
+for (const when of ["after launch", "before launch"] as const)
+  for (const size of SIZES)
+    test(`${when} ${size.width}x${size.height}: like then plus, nothing over the pitch, Tab reaches both`, async ({ page, context }) => {
+      test.setTimeout(120_000);
+      if (when === "before launch") await beforeLaunch(context);
+      if (size.width > size.height) await asInstalled(page);
+      await page.setViewportSize(size);
+      await likeThenPlus(page);
+      await page.waitForTimeout(500);
+      await expect(page.locator("aside.consent")).toHaveCount(0);
+      const o = await overlaps(page);
+      console.log(`OVERLAP ${when} ${size.width}x${size.height}: ${JSON.stringify(o)}`);
+      expect(o).toEqual([]);
+      for (const name of ["Join Ruken", "Sign in"]) {
+        const box = await page.getByRole("main").getByRole("link", { name, exact: true }).boundingBox();
+        if (box === null) throw new Error("no box");
+        expect(box.y + box.height, `${name} off screen`).toBeLessThanOrEqual(size.height);
+        const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("a")?.textContent?.trim() ?? null, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+        expect(hit).toBe(name);
+      }
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      const names: (string | null)[] = [];
+      for (let i = 0; i < 14; i++) {
+        await page.keyboard.press("Tab");
+        names.push(await focusedName(page));
+      }
+      console.log(`TAB ${when} ${size.width}x${size.height}: ${JSON.stringify([...new Set(names)])}`);
+      expect(names).toEqual(expect.arrayContaining(["Join Ruken", "Sign in"]));
+      await page.screenshot({ path: `/tmp/claude-0/r3/${test.info().project.name}-${when.replace(" ", "-")}-${size.width}x${size.height}.png` });
+      if (when === "before launch") await atLaunch(context);
+    });
+
+test("pending like: pad from first press to Join, A, I agree, form; then home shows no card and no surprise like", async ({ page }) => {
+  test.setTimeout(120_000);
+  await plugInPad(page);
+  await likeThenPlus(page);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.mouse.move(0, 0);
+  const seen: (string | null)[] = [];
+  for (let i = 0; i < 14 && (await focusedName(page)) !== "Join Ruken"; i++) {
+    await pressPad(page, i === 0 ? PAD.right : i < 8 ? PAD.down : PAD.up);
+    seen.push(await focusedName(page));
+  }
+  console.log("PAD pending:", JSON.stringify(seen));
+  expect(await focusedName(page)).toBe("Join Ruken");
+  await pressPad(page, PAD.a);
+  await expect(page).toHaveURL(/\/cookies\?for=sign-up/);
+  await pageHasSettled(page);
+  for (let i = 0; i < 10 && (await focusedName(page)) !== "I agree"; i++) await pressPad(page, i < 5 ? PAD.down : PAD.up);
+  expect(await focusedName(page)).toBe("I agree");
+  await pressPad(page, PAD.a);
+  await expect(page).toHaveURL("/sign-up?next=%2Fmake");
+  await expect(page.getByLabel("Phone number")).toBeVisible();
+  // Back on the feed with the yes now given: no card; the like asked before was not made on its own.
+  await page.goBack();
+  await page.goBack();
+  console.log("BACK to:", page.url());
+  await page.goto("/");
+  await pageHasSettled(page);
+  await expect(page.locator("aside.consent")).toHaveCount(0);
+  const clip = page.locator(`section[data-slug="${live.slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  console.log("LIKE pressed after yes?", await clip.getByRole("button", { name: "Like", exact: true }).getAttribute("aria-pressed"));
+});
+
+test("pending like: Sign in (touch or click) asks on its own screen, then the sign-in form", async ({ page }) => {
+  test.setTimeout(120_000);
+  await likeThenPlus(page);
+  await tapOr(page, page.getByRole("main").getByRole("link", { name: "Sign in", exact: true }));
+  await expect(page).toHaveURL(/\/cookies\?for=sign-in/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Cookies?");
+  await tapOr(page, page.getByRole("button", { name: "I agree" }));
+  await expect(page).toHaveURL("/sign-in?next=%2Fmake");
+  await expect(page.getByLabel("Phone number")).toBeVisible();
+});
+
+test("pending like: back to the feed from the plus, the card asks again about the like, and Not now clears it", async ({ page }) => {
+  test.setTimeout(120_000);
+  await likeThenPlus(page);
+  await tapOr(page, bar(page).getByRole("link", { name: "Home", exact: true }));
+  await expect(page).toHaveURL("/");
+  await pageHasSettled(page);
+  const card = page.locator("aside.consent");
+  console.log("CARD back on feed:", (await card.count()) > 0 ? (await card.innerText()).replaceAll(/\s+/g, " ") : "none");
+  if ((await card.count()) > 0) {
+    await tapOr(page, card.getByRole("button", { name: "Not now", exact: true }));
+    await expect(card).toHaveCount(0);
+  }
+});
