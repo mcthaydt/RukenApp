@@ -9,7 +9,7 @@
 <script lang="ts">
   import "../lib/look.css";
   import { afterNavigate, beforeNavigate, onNavigate } from "$app/navigation";
-  import { page } from "$app/state";
+  import { page, updated } from "$app/state";
   import { answerAsk, consentAsk, setAgreed } from "../features/consent/consent.browser.ts";
   import { Notice } from "../features/consent/consent.screens.ts";
   import { Bar } from "../features/feed/feed.browser.ts";
@@ -27,6 +27,7 @@
   import TurnUpright from "../lib/turn-upright.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
   import { startPad } from "../lib/pad-focus.ts";
+  import { loadsAgainOnReturn, movesAsPageLoad } from "../lib/new-version.ts";
   import { BASE_TITLE } from "../lib/titles.ts";
   import type { LayoutProps } from "./$types";
 
@@ -88,7 +89,36 @@
 
   function cameBack(event: PageTransitionEvent): void {
     if (event.persisted) clearSending();
+    if (event.persisted) void checkForNewerVersion();
   }
+
+  // A tab left open keeps the version it first loaded (src/lib/new-version.ts). Coming back to it, on the feed the
+  // newer version loads at once; anywhere else it waits for the person's next move (beforeNavigate below). The page
+  // says when the check is done, so a journey can tell a screen that stayed from one about to load again.
+  async function checkForNewerVersion(): Promise<void> {
+    const newer = await updated.check();
+    if (newer && loadsAgainOnReturn(page.route.id)) {
+      location.reload();
+      return;
+    }
+    document.documentElement.dataset.versionChecked = "true";
+  }
+
+  function cameIntoView(): void {
+    if (document.visibilityState === "visible") void checkForNewerVersion();
+  }
+  beforeNavigate((navigation) => {
+    const move = {
+      willUnload: navigation.willUnload,
+      type: navigation.type,
+      to: navigation.to?.url ?? null,
+      here: location.origin,
+    };
+    if (navigation.to !== null && movesAsPageLoad(updated.current, move)) {
+      navigation.cancel();
+      location.href = navigation.to.url.href;
+    }
+  });
 
   function sent(event: SubmitEvent): void {
     markSending(event);
@@ -183,7 +213,7 @@
   {/if}
 </svelte:head>
 
-<svelte:document onsubmit={sent} />
+<svelte:document onsubmit={sent} onvisibilitychange={cameIntoView} />
 <svelte:window onpageshow={cameBack} onpopstate={wentBack} />
 
 <PageLoading />
