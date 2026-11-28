@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
-import { CONSENTED_STATE, consented } from "./support/consent.ts";
+import { CONSENTED_STATE, NOT_CONSENTED, consented } from "./support/consent.ts";
 import {
   fillAnswers,
   followById,
@@ -212,7 +212,11 @@ async function onTheMakersClip(page: Page, path: string): Promise<void> {
   );
 }
 
+/** The pages the cookie card never stands on: the notice's own screen and What we keep (src/routes/+layout.svelte). */
+const NO_CARD = ["/cookies", "/privacy"];
+
 async function expectNothingOverlaps(page: Page, paths: readonly string[], when: string): Promise<void> {
+  const unanswered = (await page.context().cookies()).every((cookie) => cookie.name !== "rk_consent");
   for (const size of SIZES) {
     await page.setViewportSize({ width: size.width, height: size.height });
     for (const path of paths) {
@@ -238,6 +242,9 @@ async function expectNothingOverlaps(page: Page, paths: readonly string[], when:
         ).toHaveCount(1);
       await wordsHaveSettled(page);
       const where = `${path} at ${size.name}, ${when}`;
+      // Before a yes the card stands at the foot of the screen, so it is checked against every button there.
+      if (unanswered && !NO_CARD.includes(path))
+        await expect(page.locator("aside.consent"), `${where}: the cookie card`).toBeVisible();
       if (path === "/" || path === "/followed") {
         // The feed's first screen as it opens, with its tips; then the clip with a maker, the tallest column.
         expect.soft(await overlaps(page), `${where}, first screen`).toEqual([]);
@@ -265,6 +272,64 @@ test.describe("signed out", () => {
     await beforeLaunch(context);
     await expectNothingOverlaps(page, paths, "before launch");
     await atLaunch(context);
+  });
+});
+
+// Before the cookie question is answered, its card stands at the foot of every screen but Cookies and What we keep.
+// Nothing was checked with it there, so it covered the tabs, Sign in, Back and Help's buttons on phones (seen
+// 2026-11-28). Now each screen ends above it, and this checks the card's buttons and the screen's together.
+test.describe("signed out, before the cookie question is answered", () => {
+  test.use({ storageState: NOT_CONSENTED });
+
+  test("the cookie card never sits on a button, upright or sideways, before launch and after", async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(240_000);
+    const paths = [...SIGNED_OUT, `/g/${live.slug}`, `/${makerHandle}`];
+    await expectNothingOverlaps(page, paths, "before a cookie answer, after launch");
+    await beforeLaunch(context);
+    await expectNothingOverlaps(page, paths, "before a cookie answer, before launch");
+    await atLaunch(context);
+  });
+
+  test("on the about page, the cookie card never sits on a button, wherever the page is scrolled", async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    for (const size of SIZES) {
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await page.goto("/about");
+      await pageHasSettled(page);
+      await wordsHaveSettled(page);
+      await expect(page.locator("aside.consent")).toBeVisible();
+      // While the card stands at the foot, the page scrolls in the view above it, as the app's screens do.
+      const foot = await page.evaluate(() => document.body.scrollHeight - document.body.clientHeight);
+      expect(foot, "the about page scrolls above the card").toBeGreaterThan(0);
+      for (let at = 0; at <= foot + 48; at += 48) {
+        await page.evaluate(
+          (y) => {
+            document.body.scrollTo(0, y);
+          },
+          Math.min(at, foot),
+        );
+        await page.evaluate(
+          () =>
+            new Promise<void>((done) => {
+              requestAnimationFrame(() => {
+                done();
+              });
+            }),
+        );
+        expect
+          .soft(
+            await overlaps(page),
+            `/about at ${size.name}, scrolled to ${String(Math.min(at, foot))}, before a cookie answer`,
+          )
+          .toEqual([]);
+      }
+    }
   });
 });
 

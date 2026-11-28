@@ -1,6 +1,6 @@
 <!--
-  The cookie notice (design 3.4), in two shapes: a frosted card at the bottom of every screen until the browser
-  chooses, and, on /cookies, the whole screen's one card (sent there by a button that needs the yes).
+  The cookie notice (design 3.4), in two shapes: a small card at the bottom of every screen until the browser
+  chooses, which the screen above always keeps clear of, and, on /cookies, the whole screen's one card (sent there by a button that needs the yes).
   "I agree" is a plain form that works before scripts load; with scripts it does not reload the screen.
   "Not now" sends nothing and stores nothing: on the card it hides the card until the next visit.
 -->
@@ -49,6 +49,31 @@
 
   let sending = $state(false);
   let agreeButton = $state<HTMLButtonElement>();
+  let cardBox = $state<HTMLElement>();
+
+  // The card never covers a button of the screen under it (the owner's rule: no two controls ever overlap). It tells the
+  // page how much of the window's foot it takes, with a line of air, as --consent-room; the screen's view ends above it
+  // (src/lib/look.css). Measured, since its height changes with the window, the words and the why line.
+  $effect(() => {
+    const box = cardBox;
+    // Moving above the bar or off it changes where the card stands but not its size, so that is watched too.
+    void aboveBar;
+    if (box === undefined) return;
+    const root = document.documentElement;
+    const measure = () => {
+      const room = Math.ceil(innerHeight - box.getBoundingClientRect().top + 8);
+      root.style.setProperty("--consent-room", `${String(Math.max(room, 0))}px`);
+    };
+    measure();
+    const watcher = new ResizeObserver(measure);
+    watcher.observe(box);
+    addEventListener("resize", measure);
+    return () => {
+      watcher.disconnect();
+      removeEventListener("resize", measure);
+      root.style.removeProperty("--consent-room");
+    };
+  });
 
   // A press that needs the yes opened the card: "I agree" takes the keyboard's focus, so the card is the next thing a
   // person who pressed with the keyboard reaches (Tab never gets past a feed that never ends).
@@ -87,21 +112,22 @@
 {/snippet}
 
 {#if card}
-  <aside class="consent" class:above-bar={aboveBar} aria-labelledby="consent-title">
-    <h2 id="consent-title">Cookies?</h2>
+  <!-- Small, so the screen keeps most of the window: the question, its one line, the two answers, and What we keep
+       beside the question. The whole story is on What we keep, and on the notice's own screen. -->
+  <aside bind:this={cardBox} class="consent" class:above-bar={aboveBar} aria-labelledby="consent-title">
+    <div class="consent-top">
+      <h2 id="consent-title">Cookies?</h2>
+      <a class="go" href="/privacy">What we keep</a>
+    </div>
     {#if reason !== null}
       <p class="why">{WHY[reason]}</p>
+    {:else}
+      <p>We save a few small things in your browser. Nothing is saved until you say yes.</p>
     {/if}
-    <p>
-      We save a few small things in your browser. They keep you signed in, let you play and thank the maker
-      who sent you. Nothing is saved until you say yes.
-    </p>
-    <p>No ads. We never sell your data.</p>
     <div class="consent-answers">
       {@render answer()}
       <button type="button" class="safe" onclick={onNotNow}>Not now</button>
     </div>
-    <p class="note"><a class="go" href="/privacy">What we keep</a></p>
   </aside>
 {:else}
   <main class="card">
