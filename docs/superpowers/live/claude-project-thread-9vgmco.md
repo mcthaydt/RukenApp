@@ -1,0 +1,4 @@
+- Task: readable Search results, Home marked on Search and Your turn, standing text-contrast journey.
+- Last commit: 15f7aa2 (main before this work)
+- Next step: commit, push, open the draft PR, hand to a fresh lane 2 review.
+- Open decisions: none. Updated 2026-11-28 08:05 UTC.

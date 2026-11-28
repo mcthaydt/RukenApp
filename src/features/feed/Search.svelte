@@ -83,7 +83,9 @@
         <ul>
           {#each found.games as game (game.slug)}
             <li>
-              <a class="row game" href={`/g/${game.slug}`} data-sveltekit-preload-data="off">
+              <!-- Not called "game": look.css's `a.game` is Your games' paper card, whose dark words then landed on this felt
+                   one (the owner's iPad, 2026-11-28: the name and line all but invisible). -->
+              <a class="row found" href={`/g/${game.slug}`} data-sveltekit-preload-data="off">
                 <!-- The game's opening frame, so a person sees it before reading its name. A site that makes no stills
                      answers 404, and the tile stays as plain felt. -->
                 <span class="thumb" aria-hidden="true">
@@ -228,12 +230,12 @@
     transition: scale var(--press-time);
   }
   .row.maker,
-  .row.game {
+  .row.found {
     flex-direction: row;
     align-items: center;
     gap: 0.75rem;
   }
-  .row.game {
+  .row.found {
     padding-left: 0.5rem;
   }
   /* An upright clip's frame, cut to 4 by 5 like a post, on felt until it comes. */
