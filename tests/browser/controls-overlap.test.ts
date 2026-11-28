@@ -21,8 +21,8 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // and its Share: "these are overlapping, why didn't reviewer catch this?" Nothing checked it, so this does, at the
 // small phone, a common phone and the small phone held sideways (opened from the Home Screen, where it works sideways).
 // A press anywhere on a clip opens its game: that whole-clip link is under everything on purpose, and is left out, as is
-// the game page's video, which opens it full size, under its Back, and the plus to follow a maker, a badge on their
-// picture. Nothing else is: a tip over the friends' faces counts too, and a button wholly on top of another
+// the plus to follow a maker, a badge on their picture. The game page's button that opens its video full size starts
+// below Back, so the two are checked like any other pair. Nothing else is: a tip over the friends' faces counts too, and a button wholly on top of another
 // counts, and so does a page that scrolls, on its first screen, since that is what a person sees. The feed is checked on
 // a clip whose maker has a page with a long name, the tallest column of buttons there is. The friends' faces on a clip are a picture, not a control, and float behind the buttons (the owner, 2026-11-27), so they
 // are not counted either. Nothing here is made to be kept: the journeys that make, change and delete things are their
@@ -165,9 +165,6 @@ function overlaps(page: Page): Promise<string[]> {
     for (const [at, one] of controls.entries())
       for (const other of controls.slice(at + 1)) {
         if (one.thing.contains(other.thing) || other.thing.contains(one.thing)) continue;
-        // Back sits on the game page's video, which opens the video full size: a backdrop, on purpose.
-        const backdrop = (thing: Element) => thing.matches(".gamepage .clipopen");
-        if (backdrop(one.thing) || backdrop(other.thing)) continue;
         // The plus to follow a maker is a badge on the bottom edge of their picture on a clip, the two drawn as one.
         const credit = one.thing.closest(".credit");
         if (credit !== null && credit === other.thing.closest(".credit")) continue;
