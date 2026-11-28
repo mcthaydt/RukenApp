@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { hashNumber } from "../../../src/features/accounts/phone.ts";
 import { sealState } from "../../../src/features/games/github-connect.ts";
@@ -641,6 +642,44 @@ export async function makeThemUnder18(number: string): Promise<void> {
   });
 }
 
+/** The person's asks for a parent's yes, oldest first: the answer, and whether it was cancelled, ended or turned off. */
+export async function parentAsksOf(number: string): Promise<{ answer: string | null; revoked: boolean }[]> {
+  const rows = await db().parentAsk.findMany({
+    where: { teenUserId: await userIdOf(number) },
+    orderBy: { askedAt: "asc" },
+    select: { answer: true, revokedAt: true },
+  });
+  return rows.map((row) => ({ answer: row.answer, revoked: row.revokedAt !== null }));
+}
+
+/**
+ * Keeps an ask for a parent's yes for this person, as Ask a parent does but with no text, and answers its link's path,
+ * for the journeys that look at the screens around it. With `answer`, the parent has already answered.
+ */
+export async function askedForParent(number: string, answer?: "yes" | "no"): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+  const now = new Date();
+  await db().parentAsk.create({
+    data: {
+      teenUserId: await userIdOf(number),
+      phoneHash: "journey",
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      askedAt: now,
+      ...(answer === undefined ? {} : { answer, answeredAt: now }),
+    },
+  });
+  return `/parent/${token}`;
+}
+
+/** Moves the person's asks for a parent's yes this many days into the past, as if nobody had answered for that long. */
+export async function ageParentAsks(number: string, days: number): Promise<void> {
+  const teenUserId = await userIdOf(number);
+  await db().parentAsk.updateMany({
+    where: { teenUserId },
+    data: { askedAt: new Date(Date.now() - days * 86_400_000) },
+  });
+}
+
 /** Has the feed ask this person "Good pick?" about a game, as it does when the private order picks one. */
 export async function askGoodPick(number: string, slug: string): Promise<void> {
   const user = await userIdOf(number);
@@ -755,6 +794,24 @@ export async function likeById(userId: string, slug: string, on: boolean): Promi
   } else {
     await db().gameMark.deleteMany({ where: { userId, gameId, kind: "like" } });
   }
+}
+
+/** A person (by id) saves or reposts a game (by its address), as pressing Save or Repost does. */
+export async function markById(userId: string, slug: string, kind: "save" | "repost"): Promise<void> {
+  const { id: gameId } = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true } });
+  await db().gameMark.createMany({
+    data: [{ userId, gameId, kind, madeAt: new Date() }],
+    skipDuplicates: true,
+  });
+}
+
+/** One friend (by id) sends another a game (by its address), as Send in the share sheet does. */
+export async function sendById(fromId: string, toId: string, slug: string): Promise<void> {
+  const { id: gameId } = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true } });
+  await db().gameSend.createMany({
+    data: [{ fromId, toId, gameId, sentAt: new Date() }],
+    skipDuplicates: true,
+  });
 }
 
 /** One person (by id) stops following another. */

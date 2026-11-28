@@ -21,6 +21,7 @@ export const PEOPLE_SCREENS: ReadonlySet<string> = new Set([
   "/me/reposts",
   "/me/link",
   "/settings/feed",
+  "/settings/feed/parent",
   "/make",
   "/make/new",
   "/make/[game]",
@@ -43,6 +44,8 @@ export const PEOPLE_SCREENS: ReadonlySet<string> = new Set([
 /** The screens that answer whether or not the account has a page. Endpoints (a folder with only `+server.ts`) are open too. */
 export const OPEN_SCREENS: ReadonlySet<string> = new Set([
   "/me/name",
+  // A parent answering a teen's ask: the parent may hold any account, or none.
+  "/parent/[token]",
   "/sign-in",
   "/sign-up",
   "/sign-out",

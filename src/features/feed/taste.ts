@@ -1,6 +1,7 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import { isAdultOn } from "../accounts/accounts.ts";
+import { holdsYes } from "./parent-asks.ts";
 import { GENRES, isGenre, isMood, MOODS, tasteSentence } from "./taste-words.ts";
 
 // What a person tells the feed about their taste (Your feed, the ••• sheet on a clip and the Good pick card): chips of
@@ -12,6 +13,12 @@ export type TasteKind = "mood" | "genre" | "maker" | "game";
 
 /** Whether the feed may learn from this person: on, turned off by them, or locked off (under 18 with no parent's yes). */
 export type Learning = "on" | "off" | "locked";
+
+/** What the feed reads to decide who is asking: the person's Learning, and whether they are a known adult. */
+export interface Learner {
+  learning: Learning;
+  adult: boolean;
+}
 
 /** One chip: what it is about, and the words on it. */
 export interface Chip {
@@ -48,6 +55,8 @@ const SUGGESTIONS = 2;
 export interface TasteDeps {
   db: PrismaClient;
   clock: Clock;
+  /** FEED_PUBLIC's `teenPersonal`: off, a teen stays locked off even with a parent's yes. Left out, off. */
+  teenPersonal?: () => boolean;
 }
 
 export type Taste = ReturnType<typeof createTaste>;
@@ -56,14 +65,24 @@ export function createTaste(deps: TasteDeps) {
   const { db, clock } = deps;
   const now = () => new Date(clock.epochMs());
 
-  async function learningOf(userId: string): Promise<Learning> {
+  /**
+   * Whether the feed may learn from this person, and whether they are a known adult. An under-18, or anyone of unknown
+   * age, is locked off until a parent's yes holds while `teenPersonal` is on; then they have the switch like anyone else.
+   */
+  async function learnerOf(userId: string): Promise<Learner> {
     const user = await db.user.findUnique({
       where: { id: userId },
       select: { adultOn: true, feedPersonal: true },
     });
-    // A parent's yes (unit I) is not built yet, so an under-18 or anyone of unknown age is locked off.
-    if (user === null || !isAdultOn(user.adultOn, clock)) return "locked";
-    return user.feedPersonal ? "on" : "off";
+    if (user === null) return { learning: "locked", adult: false };
+    const adult = isAdultOn(user.adultOn, clock);
+    if (!adult && !(deps.teenPersonal?.() === true && (await holdsYes(db, userId))))
+      return { learning: "locked", adult };
+    return { learning: user.feedPersonal ? "on" : "off", adult };
+  }
+
+  async function learningOf(userId: string): Promise<Learning> {
+    return (await learnerOf(userId)).learning;
   }
 
   /** Forgets what the feed learned: every chip and Good pick answer goes, and nothing before now is read again. */
@@ -108,6 +127,7 @@ export function createTaste(deps: TasteDeps) {
   }
 
   return {
+    learnerOf,
     learningOf,
 
     /** Your feed, as its screen shows it. */

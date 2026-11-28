@@ -29,6 +29,7 @@ export DIRECT_DATABASE_URL=$TEST_DATABASE_URL CLOUDFLARE_HYPERDRIVE_LOCAL_CONNEC
 export BETTER_AUTH_SECRET=test-only-secret-not-used-anywhere-real BETTER_AUTH_URL=http://localhost:4173
 export RESEND_API_KEY=re_test_fake RESEND_API_BASE=http://127.0.0.1:12113 "MAIL_FROM=Ruken <hello@ruken.test>"
 export JOBS_SECRET=test-only-jobs-secret STRIPE_SECRET_KEY=sk_test_fake STRIPE_WEBHOOK_SECRET=whsec_test_fake STRIPE_LIVE=false STRIPE_API_BASE=http://127.0.0.1:12111
+export FEED_PUBLIC='{"learned":false,"teenPersonal":true,"windowDays":7}'
 export TWILIO_ACCOUNT_SID=AC_test_fake TWILIO_API_KEY=SK_test_fake TWILIO_API_SECRET=test-only-twilio-secret TWILIO_ACCOUNT_SERVICE=MG-account TWILIO_NEWS_SERVICE=MG-news TWILIO_VERIFY_SERVICE=VA_test_fake TWILIO_API_BASE=http://127.0.0.1:12114
 export PLAY_PASS_SECRET=test-only-play-pass-secret GITHUB_APP_ID=1 GITHUB_APP_SLUG=ruken-test-app GITHUB_APP_CLIENT_ID=test-client GITHUB_APP_CLIENT_SECRET=test-only-client-secret
 export GITHUB_API_BASE=http://127.0.0.1:12112 GITHUB_WEB_BASE=http://127.0.0.1:12112 "GAME_ADDRESS_PATTERN=http://{name}.localhost:8788" LAUNCH_TEST_SWITCH=on DECISION_DAYS_TEST_OFF=on

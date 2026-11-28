@@ -147,14 +147,16 @@ export async function wordsHaveSettled(page: Page): Promise<void> {
 /**
  * Waits until the page has stopped moving by itself, so two boxes measured one after the other are measured in the same
  * layout: the words have settled (`wordsHaveSettled`) and every video has its size (a tile without one is another
- * height). It waits on these events and never on a time.
+ * height). A video given its shape by the look (an `aspect-ratio`) has its box already, so it is not waited for: a
+ * loaded machine's WebKit can leave such a clip with no data for 30 s (2026-11-28). It waits on these events and never
+ * on a time.
  */
 export async function layoutHasSettled(page: Page): Promise<void> {
   await wordsHaveSettled(page);
   await page.evaluate(async () => {
     await Promise.all(
       [...document.querySelectorAll<HTMLVideoElement>("video[src]")].map((video) =>
-        video.readyState >= 1
+        video.readyState >= 1 || getComputedStyle(video).aspectRatio !== "auto"
           ? Promise.resolve()
           : new Promise<void>((done) => {
               video.addEventListener("loadedmetadata", () => {

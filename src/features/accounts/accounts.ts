@@ -17,7 +17,7 @@ export {
   signOut,
   startSignUp,
 } from "./forms.ts";
-export { OPEN_COUNTRIES, shownAs } from "./phone.ts";
+export { hashNumber, OPEN_COUNTRIES, shownAs, typedNumber } from "./phone.ts";
 export { setPaperEmail } from "./paper.ts";
 export { setMoneyCheck } from "./changed-hands.ts";
 export { ageCheck, isAdultOn, type BirthDate } from "./age.ts";
