@@ -228,6 +228,28 @@ test("Playtesters, its invite sheet, and a playtester's and an asker's game page
   }
 });
 
+// The waiting screen's two clips sit in frames of their own shape, so their boxes are set before a clip has loaded, and
+// measuring them waits for nothing. Seen 2026-11-28 (`real-buttons.test.ts:201` under load): the page had loaded, but
+// WebKit left both clips with no data for 30 s while the media server answered every ask in under 0.22 s, and the wait
+// for their size never ended. Here, once the page is in, each clip is asked for again and never answered.
+test("a waiting game's screen settles even when its clips never load", async ({ page }) => {
+  test.setTimeout(45_000);
+  const { slug } = await gameWhere(page, { state: "waiting" });
+  await page.goto(`/make/${slug}`);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const clips = page.locator(".tiles video");
+  await expect(clips).toHaveCount(2);
+  await page.route(/[?&]never(#|$)/, () => undefined);
+  for (const clip of await clips.all())
+    await clip.evaluate((video: HTMLVideoElement) => {
+      const [address = "", at = ""] = video.src.split("#");
+      video.src = `${address}${address.includes("?") ? "&" : "?"}never#${at}`;
+    });
+  for (const clip of await clips.all())
+    expect(await clip.evaluate((video: HTMLVideoElement) => video.readyState)).toBe(0);
+  await expect(layoutHasSettled(page)).resolves.toBeUndefined();
+});
+
 test("a maker's question: the foot and the how-to are real buttons", async ({ page }) => {
   const { slug } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}/upright`);

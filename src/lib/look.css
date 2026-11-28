@@ -2258,6 +2258,15 @@ a.foot:active {
   height: 100%;
 }
 
+/* Each video takes its own shape, the same as its frame's, so its box is set before the video has loaded a thing. */
+.tiles .tile[data-shape="upright"] {
+  aspect-ratio: 9 / 16;
+}
+
+.tiles .tile[data-shape="wide"] {
+  aspect-ratio: 16 / 9;
+}
+
 .tiles figcaption > span {
   white-space: nowrap;
 }
