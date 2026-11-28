@@ -1248,6 +1248,17 @@
     backdrop-filter: var(--glass-filter);
     box-shadow: var(--glass-edge);
   }
+  /* A phone held upright is too narrow to centre the first open's tips between the column of round buttons on either
+     side, so they start at the left, where the game's card does, and end short of the column (the review of #435: centred,
+     they covered Save and Like). They stand just under the top bar, so their lines never reach the game's card. */
+  @media (orientation: portrait) and (max-width: 499px) {
+    .hints {
+      top: calc(0.75rem + var(--size-target) + 0.75rem);
+      left: 0.75rem;
+      translate: none;
+      max-width: calc(100% - 0.75rem - 5.5rem - 1.5rem);
+    }
+  }
   /* A short phone held upright (an iPhone SE, 568px): the maker, their name and five round buttons stand taller than
      the room between the top bar and the bar, so the maker's picture went under Search and the tabs. Here the column
      closes up and the maker's name is left for a screen reader, the picture still opening their page. */

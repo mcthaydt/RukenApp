@@ -65,38 +65,70 @@ test.beforeEach(async ({ page }) => {
   await asInstalled(page);
 });
 
-/** Each pair of buttons or links on screen whose boxes cross, named by their words. */
+/** Each pair of buttons or links on screen whose boxes cross, and each floating tip or line over a button. */
 function overlaps(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const name = (thing: Element) =>
       (thing.getAttribute("aria-label") ?? thing.textContent.trim().replaceAll(/\s+/g, " ")) ||
       (thing.getAttribute("class") ?? "");
+    /** The part of a thing that is drawn on screen. */
+    const drawn = (thing: Element) => {
+      const box = thing.getBoundingClientRect();
+      // Only the part that is drawn: inside the window (a clip scrolled away is not on screen) and inside every box
+      // around it that cuts off what runs past it (a view that scrolls inside itself ends above the bar).
+      let left = Math.max(box.left, 0);
+      let top = Math.max(box.top, 0);
+      let right = Math.min(box.right, innerWidth);
+      let bottom = Math.min(box.bottom, innerHeight);
+      for (let around = thing.parentElement; around !== null; around = around.parentElement) {
+        const style = getComputedStyle(around);
+        if (style.overflowX === "visible" && style.overflowY === "visible") continue;
+        const cut = around.getBoundingClientRect();
+        left = Math.max(left, cut.left);
+        top = Math.max(top, cut.top);
+        right = Math.min(right, cut.right);
+        bottom = Math.min(bottom, cut.bottom);
+      }
+      return { thing, left, top, right, bottom };
+    };
     const controls = [
       ...document.querySelectorAll("a, button, input, select, textarea, summary, [role='button']"),
     ]
       .filter((thing) => thing.closest("[aria-hidden='true'], [inert]") === null)
       .filter((thing) => thing.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
-      .map((thing) => {
-        const box = thing.getBoundingClientRect();
-        // Only the part that is drawn: inside the window (a clip scrolled away is not on screen) and inside every box
-        // around it that cuts off what runs past it (a view that scrolls inside itself ends above the bar).
-        let left = Math.max(box.left, 0);
-        let top = Math.max(box.top, 0);
-        let right = Math.min(box.right, innerWidth);
-        let bottom = Math.min(box.bottom, innerHeight);
-        for (let around = thing.parentElement; around !== null; around = around.parentElement) {
-          const style = getComputedStyle(around);
-          if (style.overflowX === "visible" && style.overflowY === "visible") continue;
-          const cut = around.getBoundingClientRect();
-          left = Math.max(left, cut.left);
-          top = Math.max(top, cut.top);
-          right = Math.min(right, cut.right);
-          bottom = Math.min(bottom, cut.bottom);
-        }
-        return { thing, left, top, right, bottom };
+      .map(drawn)
+      .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
+    // Anything else drawn floating over the screen that is not a button (a tip such as "Swipe up for the next game", a
+    // "Got it." line, a problem's words): a positioned box painted with glass or a colour, holding no button. Over a
+    // button it hides it as surely as another button would. The friends' faces are a picture behind the buttons.
+    const overlays = [...document.querySelectorAll("body *")]
+      .filter((thing) => {
+        const style = getComputedStyle(thing);
+        if (!["absolute", "fixed", "sticky"].includes(style.position)) return false;
+        const painted =
+          style.backdropFilter !== "none" ||
+          (style.backgroundColor !== "rgba(0, 0, 0, 0)" && style.backgroundColor !== "transparent");
+        return (
+          painted &&
+          thing.querySelector("a, button, input, select, textarea, summary, [role='button']") === null &&
+          thing.closest(
+            "a, button, input, select, textarea, summary, [role='button'], [aria-hidden='true'], .friends",
+          ) === null &&
+          thing.checkVisibility({ visibilityProperty: true, opacityProperty: true })
+        );
       })
+      .map(drawn)
       .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
     const found: string[] = [];
+    for (const overlay of overlays)
+      for (const control of controls) {
+        if (overlay.thing.contains(control.thing) || control.thing.contains(overlay.thing)) continue;
+        // The game's name on the game page sits over its video, the backdrop that opens it full size, on purpose.
+        if (control.thing.matches(".gamepage .clipopen")) continue;
+        const wide = Math.min(overlay.right, control.right) - Math.max(overlay.left, control.left);
+        const tall = Math.min(overlay.bottom, control.bottom) - Math.max(overlay.top, control.top);
+        if (wide > 1 && tall > 1) found.push(`${name(overlay.thing)} / ${name(control.thing)}`);
+      }
     for (const [at, one] of controls.entries())
       for (const other of controls.slice(at + 1)) {
         if (one.thing.contains(other.thing) || other.thing.contains(one.thing)) continue;
@@ -154,11 +186,24 @@ async function expectNothingOverlaps(page: Page, paths: readonly string[], when:
   for (const size of SIZES) {
     await page.setViewportSize({ width: size.width, height: size.height });
     for (const path of paths) {
+      // The feed's first-open tips show again at each size: the note that they were seen is forgotten.
+      await page.evaluate(() => {
+        try {
+          localStorage.removeItem("rk_seen_hints");
+        } catch {
+          // A blank page before the first screen has no storage, and nothing to forget.
+        }
+      });
       await page.goto(path);
       await pageHasSettled(page);
-      if (path === "/" || path === "/followed") await onTheMakersClip(page, path);
       await wordsHaveSettled(page);
       const where = `${path} at ${size.name}, ${when}`;
+      if (path === "/" || path === "/followed") {
+        // The feed's first screen as it opens, with its tips; then the clip with a maker, the tallest column.
+        expect.soft(await overlaps(page), `${where}, first screen`).toEqual([]);
+        await onTheMakersClip(page, path);
+        await wordsHaveSettled(page);
+      }
       // Soft, so one run lists every screen and size that fails, not only the first.
       expect.soft(await overlaps(page), where).toEqual([]);
       expect.soft(await spilling(page), where).toEqual([]);
