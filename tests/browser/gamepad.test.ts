@@ -383,7 +383,15 @@ test("signed in, the pad reaches everything on You, Your name, Saved, Reposts, Y
 }) => {
   test.setTimeout(240_000);
   await signUp(page);
-  for (const path of ["/me", "/me/name", "/me/saved", "/me/reposts", "/settings/feed", "/make", "/make/new"]) {
+  for (const path of [
+    "/me",
+    "/me/name",
+    "/me/saved",
+    "/me/reposts",
+    "/settings/feed",
+    "/make",
+    "/make/new",
+  ]) {
     await page.goto(path);
     await wordsHaveSettled(page);
     await padReachesEverything(page);

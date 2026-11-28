@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { pageHasSettled, signUp, signUpInItsOwnContext, signInAs } from "./support/account.ts";
-import { givePage, makeDeletionDue } from "./support/database.ts";
+import { nameFor, pageHasSettled, signUp, signUpInItsOwnContext, signInAs } from "./support/account.ts";
+import { givePage, makeDeletionDue, pageOfNumber } from "./support/database.ts";
 import { addDraft } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { holdNextScreen } from "./support/hold.ts";
@@ -88,7 +88,10 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   page,
 }, testInfo) => {
   test.setTimeout(180_000);
-  await signUp(page);
+  const maker = await signUp(page);
+  // Sign-up made an unlisted page from the name: until it is listed here, its editor is the address question.
+  const unlisted = await pageOfNumber(maker.number);
+  expect(unlisted).toMatchObject({ name: nameFor(maker.number), listed: false });
   const address = `owl${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
   const moved = `${address}x`;
 
@@ -99,6 +102,7 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
 
   // ---- Create: the first question makes the page ----
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Pick your page's address");
+  await expect(page.getByRole("link", { name: "See your page" })).toHaveCount(0);
   await pageHasSettled(page);
   await showTheOwner(page, testInfo, "your page, the address question");
   // Refusals, in the service's own words, keep what was typed and put the keyboard in the box.
@@ -117,7 +121,13 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your page");
   await expect(page.getByRole("status")).toHaveText("Saved. Your page is live.");
   await expect(page.getByRole("link", { name: /^Address/ })).toContainText(`/${address}`);
-  await expect(page.getByRole("link", { name: /^Name/ })).toContainText(address);
+  // The name the account gave at sign-up is kept; listing the page only gave it this address.
+  await expect(page.getByRole("link", { name: /^Name/ })).toContainText(nameFor(maker.number));
+  expect(await pageOfNumber(maker.number)).toEqual({
+    handle: address,
+    name: nameFor(maker.number),
+    listed: true,
+  });
   await expect(page.getByRole("link", { name: /^Photo/ })).toContainText("Not yet");
   await expect(page.getByRole("link", { name: /^Links/ })).toContainText("No links yet");
   await expect(page.getByText("Opened 0 times.")).toBeVisible();
@@ -127,7 +137,7 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(page.getByRole("status")).toHaveCount(0);
   await page.getByRole("link", { name: "See your page" }).click();
   await expect(page).toHaveURL(`/${address}`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(address);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(nameFor(maker.number));
 
   // ---- Update: the name, with its refusal ----
   await openRoom(page, "Name");

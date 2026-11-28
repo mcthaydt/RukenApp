@@ -66,7 +66,8 @@ async function rememberArrival(
   } else if (first !== undefined && second === undefined && rest.length === 0 && isHandleShape(first)) {
     const page = await pagesServices().service.pageByHandle(first);
     // An unlisted page's address is the missing page, so nobody arrives through it.
-    if (page?.listed === true) arrival.remember(cookies, { makerUserId: page.makerUserId, path: `/${first}` });
+    if (page?.listed === true)
+      arrival.remember(cookies, { makerUserId: page.makerUserId, path: `/${first}` });
   }
 }
 

@@ -1,7 +1,15 @@
 import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { answerTheName, freshNumber, pageHasSettled, startSignUpForm } from "./support/account.ts";
 import { consented } from "./support/consent.ts";
-import { changeGame, followsOf, makeDeletionDue, pageOfId, pageOfNumber, sentTo, userIdOf } from "./support/database.ts";
+import {
+  changeGame,
+  followsOf,
+  makeDeletionDue,
+  pageOfId,
+  pageOfNumber,
+  sentTo,
+  userIdOf,
+} from "./support/database.ts";
 import { gameWhere } from "./support/game.ts";
 import { asInstalled } from "./support/installed.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -39,7 +47,11 @@ test.beforeAll(async ({ browser }) => {
 test.beforeEach(forgetRateLimits);
 
 /** A person who signs up in a browser of their own, answers the name question, and is given one of the live games. */
-async function signsUp(browser: Browser, name: string, game: { slug: string; name: string }): Promise<Person> {
+async function signsUp(
+  browser: Browser,
+  name: string,
+  game: { slug: string; name: string },
+): Promise<Person> {
   const context = await browser.newContext({ ...consented, baseURL: SITE });
   const page = await context.newPage();
   await asInstalled(page);

@@ -81,7 +81,11 @@ export function nameQuestionFor(next: string): string {
 export function nameGate(hasPage: (userId: string) => Promise<boolean>): Handle {
   return async ({ event, resolve }) => {
     const caller = event.locals.caller;
-    if (caller.kind === "user" && PEOPLE_SCREENS.has(event.route.id ?? "") && !(await hasPage(caller.userId))) {
+    if (
+      caller.kind === "user" &&
+      PEOPLE_SCREENS.has(event.route.id ?? "") &&
+      !(await hasPage(caller.userId))
+    ) {
       redirect(303, nameQuestionFor(event.url.pathname + event.url.search));
     }
     return resolve(event);

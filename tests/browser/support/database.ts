@@ -516,6 +516,11 @@ export async function removePage(account: { number: string }): Promise<void> {
   await db().makerPage.deleteMany({ where: { userId: await userIdOf(account.number) } });
 }
 
+/** Lists a page or takes it off the list, as sign-up's own page is until the editor lists it. */
+export async function setListed(handle: string, listed: boolean): Promise<void> {
+  await db().makerPage.update({ where: { handle }, data: { listed } });
+}
+
 /** How many times a page was opened by a visitor, and how many times each of its links was tapped, in the page's order. */
 export async function pageCounts(handle: string): Promise<{ views: number; taps: number[] }> {
   const page = await db().makerPage.findUniqueOrThrow({

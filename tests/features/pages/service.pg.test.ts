@@ -593,7 +593,11 @@ describe("the page sign-up makes from a name", () => {
     const userId = await createUser(db());
     await service.makeUnlistedPage(userId, "Editor Ed");
     expect(await service.listInEditor(userId, " @Ed-Makes ")).toEqual({ handle: "ed-makes" });
-    expect(await service.pageOf(userId)).toMatchObject({ handle: "ed-makes", name: "Editor Ed", listed: true });
+    expect(await service.pageOf(userId)).toMatchObject({
+      handle: "ed-makes",
+      name: "Editor Ed",
+      listed: true,
+    });
 
     const other = await createUser(db());
     await service.makeUnlistedPage(other, "Other One");

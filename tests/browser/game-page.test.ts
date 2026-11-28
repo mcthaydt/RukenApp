@@ -1,11 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
-import { pageHasSettled, payAsNewMember, signInAs, signUpInItsOwnContext } from "./support/account.ts";
+import {
+  nameFor,
+  pageHasSettled,
+  payAsNewMember,
+  signInAs,
+  signUpInItsOwnContext,
+} from "./support/account.ts";
 import {
   addPlays,
   changeGame,
   givePage,
   giveStaffRole,
   putGameWhereStaffLeaveIt,
+  removePage,
 } from "./support/database.ts";
 import { addGame, gameWhere } from "./support/game.ts";
 import { expectFrame, pipRed, showTheOwner } from "./support/look.ts";
@@ -159,10 +166,28 @@ test("the maker is shown when they have a page, with their other games", async (
   await showTheOwner(page, testInfo, "a game's page, with its maker and their other games");
 });
 
-test("a maker with no page is not shown", async ({ page }) => {
+test("an unlisted maker's name is words, not a link, and their other games still show", async ({ page }) => {
+  const makerName = nameFor(game.maker.number);
+  const other = await gameWhere(page, { state: "live" });
+  await changeGame(other.slug, { makerUserId: game.makerUserId });
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
-  await expect(page.getByText("Made by")).toHaveCount(0);
-  await expect(page.getByText(/^More from/)).toHaveCount(0);
+  await expect(page.getByText("Made by")).toBeVisible();
+  await expect(page.getByText(makerName, { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: makerName, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: `More from ${makerName}` })).toBeVisible();
+  await expect(page.locator(".more a")).toHaveAttribute("href", `/g/${other.slug}`);
+});
+
+test("a maker with no page is not shown", async ({ page }) => {
+  // An account from before the name question, that has not answered it yet.
+  await removePage(free.maker);
+  try {
+    await page.goto(`/g/${free.slug}`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Made by")).toHaveCount(0);
+    await expect(page.getByText(/^More from/)).toHaveCount(0);
+  } finally {
+    await givePage(free.maker, { name: nameFor(free.maker.number), oneLine: "" });
+  }
 });
 
 test("landing on a game's page remembers its maker's link", async ({ page }) => {

@@ -229,8 +229,9 @@
             <img use:loads src={data.maker.photo} alt="" width="48" height="48" />
           {/if}
           <span
-            >Made by {#if data.maker.listed}<a data-sveltekit-preload-data="off" href={`/${data.maker.handle}`}
-                ><strong>{data.maker.name}</strong></a
+            >Made by {#if data.maker.listed}<a
+                data-sveltekit-preload-data="off"
+                href={`/${data.maker.handle}`}><strong>{data.maker.name}</strong></a
               >{:else}<strong>{data.maker.name}</strong>{/if}{#if data.maker.oneLine !== ""}
               <q>{data.maker.oneLine}</q>{/if}</span
           >

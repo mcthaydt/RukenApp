@@ -9,7 +9,12 @@ import type { Actions, PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ locals, url }) => {
   const { userId, next } = signedInOnly(locals.caller, url);
   const page = await pagesServices().service.pageOf(userId);
-  return { name: page?.name ?? "", hasPage: page !== null, adult: await isKnownAdultCaller(locals.caller), next };
+  return {
+    name: page?.name ?? "",
+    hasPage: page !== null,
+    adult: await isKnownAdultCaller(locals.caller),
+    next,
+  };
 };
 
 export const actions: Actions = {

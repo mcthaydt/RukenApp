@@ -39,8 +39,8 @@
       who sees your games see it.
     </li>
     <li>
-      <strong>Your address.</strong> We make one from your name, so friends can find you and send you games.
-      Your page is not public yet.
+      <strong>Your address.</strong> We make one from your name, so friends can find you and send you games. Your
+      page is not public yet.
     </li>
     <li>
       <strong>Your age.</strong> We ask for your date of birth to check you're 13 or older. We keep only the day

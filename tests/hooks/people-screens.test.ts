@@ -44,7 +44,14 @@ describe("the screens an account with no page is asked its name before", () => {
   });
 
   it("keeps the question, the way out and the safety screens open", () => {
-    for (const id of ["/me/name", "/sign-out", "/me/delete", "/me/password", "/me/computers", "/g/[game]/play"])
+    for (const id of [
+      "/me/name",
+      "/sign-out",
+      "/me/delete",
+      "/me/password",
+      "/me/computers",
+      "/g/[game]/play",
+    ])
       expect(OPEN_SCREENS.has(id), id).toBe(true);
     for (const id of ["/", "/your-turn", "/search", "/g/[game]", "/me", "/make", "/[handle=handle]"])
       expect(PEOPLE_SCREENS.has(id), id).toBe(true);

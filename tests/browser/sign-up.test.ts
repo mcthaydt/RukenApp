@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { shownAs } from "../../src/features/accounts/phone.ts";
 import {
+  answerTheName,
   finishSignUpForm,
   freshNumber,
   JOURNEY_PASSWORD,
+  nameFor,
   nationalOf,
   pageHasSettled,
   signInAs,
@@ -51,6 +53,7 @@ test("a number typed with brackets and dashes is the same account as +1 and spac
   await pageHasSettled(page);
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
+  await answerTheName(page, nameFor(number));
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
   // Found again at sign-in whichever way it is typed.
@@ -126,6 +129,7 @@ test("a wrong code says so and keeps the code screen", async ({ page }) => {
   // The right one still works, since a wrong guess does not use the code up.
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
+  await answerTheName(page, nameFor(number));
   await expect(page).toHaveURL("/");
 });
 
@@ -180,6 +184,7 @@ test("Text it again sends a new code and the old one stops working", async ({ pa
   await expect(page.getByText("That code isn't right. Check the text, or ask for a new one.")).toBeVisible();
   await page.getByLabel("The code we texted you").fill(second);
   await page.getByRole("button", { name: "Join Ruken" }).click();
+  await answerTheName(page, nameFor(number));
   await expect(page).toHaveURL("/");
 });
 
@@ -238,6 +243,7 @@ test("Change the number goes back to the first screen with what was typed, and n
   await page.getByRole("button", { name: "Text me a code" }).click();
   await page.getByLabel("The code we texted you").fill(await codeTo(other));
   await page.getByRole("button", { name: "Join Ruken" }).click();
+  await answerTheName(page, nameFor(other));
   await expect(page).toHaveURL("/");
 });
 
@@ -254,6 +260,7 @@ test("when Twilio fails, the code screen still shows and Text it again works", a
 
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
+  await answerTheName(page, nameFor(number));
   await expect(page).toHaveURL("/");
 });
 
@@ -287,6 +294,7 @@ test("a second browser cannot choose the password, even when it has the code", a
   await forgetCodeLimits(number);
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
+  await answerTheName(page, nameFor(number));
   await expect(page).toHaveURL("/");
   await clearCookiesKeepingConsent(page.context());
   await page.goto("/sign-in");
@@ -341,6 +349,7 @@ test("the sign-up's own cookie is only for the sign-up, and is gone once it is d
   expect(during).toMatchObject({ path: "/sign-up", httpOnly: true, sameSite: "Lax" });
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
+  await answerTheName(page, nameFor(number));
   await expect(page).toHaveURL("/");
   expect((await page.context().cookies()).find((cookie) => cookie.name === "ruken_sign_up")).toBeUndefined();
 });
@@ -358,6 +367,7 @@ test("it works with no script at all", async ({ browser, baseURL }) => {
     await startSignUpForm(page, number, undefined, false);
     await page.getByLabel("The code we texted you").fill(await codeTo(number));
     await page.getByRole("button", { name: "Join Ruken" }).click();
+    await answerTheName(page, nameFor(number));
     await expect(page).toHaveURL("/");
   } finally {
     await context.close();

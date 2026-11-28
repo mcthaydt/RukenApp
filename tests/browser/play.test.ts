@@ -3,12 +3,13 @@ import {
   continueToPayment,
   finishSignUpForm,
   freshNumber,
+  nameFor,
   pageHasSettled,
   payAsNewMember,
   signInAs,
   pressPay,
 } from "./support/account.ts";
-import { endMembershipOf, userIdOf } from "./support/database.ts";
+import { endMembershipOf, givePage, removePage, userIdOf } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -117,8 +118,8 @@ test("the menu opens, keeps playing, starts again and leaves", async ({ page }, 
   for (const name of ["Keep playing", "Start again", "Leave game"])
     await expect(page.getByRole("button", { name }).or(page.getByRole("link", { name }))).toBeVisible();
   await expect(page.getByText("Use this if the game is stuck.")).toBeVisible();
-  // This game's maker has no page, so the menu says where it is from instead of leaving the line out.
-  await expect(page.getByText("Made on Ruken")).toBeVisible();
+  // This game's maker only signed up: their page is unlisted, so the menu gives their name as words.
+  await expect(page.getByText(`by ${nameFor(free.maker.number)}`, { exact: true })).toBeVisible();
   await showTheOwner(page, testInfo, "the menu");
 
   await page.keyboard.press("Escape");
@@ -138,6 +139,20 @@ test("the menu opens, keeps playing, starts again and leaves", async ({ page }, 
   await page.getByRole("link", { name: "Leave game" }).click();
   await expect(page).toHaveURL(`/g/${free.slug}`);
   await expect(page.locator("iframe")).toHaveCount(0);
+});
+
+test("a game whose maker has no page says it was made on Ruken", async ({ page }) => {
+  // An account from before the name question, that has not answered it yet.
+  await removePage(game.maker);
+  try {
+    await payAsNewMember(page);
+    await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
+    await loaded(page);
+    await tabOf(page).click();
+    await expect(page.getByText("Made on Ruken")).toBeVisible();
+  } finally {
+    await givePage(game.maker, { name: nameFor(game.maker.number), oneLine: "" });
+  }
 });
 
 test("the Menu tab moves, and stays where it was left", async ({ page }) => {
