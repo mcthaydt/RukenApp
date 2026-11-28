@@ -81,30 +81,31 @@ export function askingFor(settings: FeedPublic, person: Person): Asking {
 }
 
 /**
- * Who the ranker is told is asking, from the browser and the account. The account's Learn from what I do and age are read
- * only for a signed-in person whose browser said yes to cookies while `learned` is on: for anyone else the feed has no
- * reason to look. `learningOf` answers "on" only for a known adult with Learn from what I do on; a parent's yes is not
- * built yet, so an under-18 or anyone of unknown age is "locked" and is the crowd. An account that cannot be read is the
- * crowd too: the feed never learns from someone it could not check.
+ * Who the ranker is told is asking, from the browser and the account. The account is read only for a signed-in person
+ * whose browser said yes to cookies while `learned` is on: for anyone else the feed has no reason to look. `learnerOf`
+ * answers "locked" for an under-18, or anyone of unknown age, with no parent's yes; an under-18 who is not locked has a
+ * parent's yes, which counts only while `teenPersonal` is on. An account that cannot be read is the crowd too: the feed
+ * never learns from someone it could not check.
  */
 export async function askingOf(
   settings: FeedPublic,
   browser: { userId: string | null; consented: boolean },
-  learningOf: (userId: string) => Promise<"on" | "off" | "locked">,
+  learnerOf: (userId: string) => Promise<{ learning: "on" | "off" | "locked"; adult: boolean }>,
 ): Promise<Asking> {
   const { userId, consented } = browser;
   if (!settings.learned || userId === null || !consented) return CROWD;
-  let learning: "on" | "off" | "locked";
+  let learner: { learning: "on" | "off" | "locked"; adult: boolean };
   try {
-    learning = await learningOf(userId);
+    learner = await learnerOf(userId);
   } catch {
     return CROWD;
   }
+  if (learner.learning === "locked") return CROWD;
   return askingFor(settings, {
     userId,
     consented,
-    adult: learning !== "locked",
-    parentSaidYes: false,
-    learnFromMe: learning === "on",
+    adult: learner.adult,
+    parentSaidYes: !learner.adult,
+    learnFromMe: learner.learning === "on",
   });
 }

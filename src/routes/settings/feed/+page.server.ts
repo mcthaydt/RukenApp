@@ -3,12 +3,15 @@ import { signedInOnly } from "../../../features/accounts/accounts.ts";
 import { feedServices } from "../../../features/feed/feed.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
-// Settings › Your feed (learned feed spec 6.2; the Owner, 2026-11-27: feed settings live under Settings): what the feed
-// learned or was told, more and less of, as chips; Learn from what I do; and Start over. Signed out, sign in first.
+// Settings › Your feed (learned feed spec 6.2 and 6.5; the Owner, 2026-11-27: feed settings live under Settings): what the feed
+// learned or was told, more and less of, as chips; Learn from what I do; Start over; and for a teen, Ask a parent. Signed out, sign in first.
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   const { userId } = signedInOnly(locals.caller, url);
-  return { feed: await feedServices().taste.view(userId) };
+  const feed = await feedServices().taste.view(userId);
+  // A teen whose feed does not learn sees Ask a parent, or the ask waiting with Cancel.
+  const asked = feed.learning === "locked" ? await feedServices().parentAsks.stateOf(userId) : "none";
+  return { feed, asked };
 };
 
 const words = (form: FormData, name: string): string => {
@@ -45,6 +48,12 @@ export const actions: Actions = {
     const { userId } = signedInOnly(locals.caller, url);
     await feedServices().taste.startOver(userId);
     return { done: "started-over" as const };
+  },
+
+  cancelAsk: async ({ locals, url }) => {
+    const { userId } = signedInOnly(locals.caller, url);
+    await feedServices().parentAsks.cancel(userId);
+    return { done: "cancelled" as const };
   },
 
   learning: async ({ locals, url, request }) => {

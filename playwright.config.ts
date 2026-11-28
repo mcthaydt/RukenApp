@@ -121,6 +121,9 @@ export default defineConfig({
         TWILIO_NEWS_SERVICE: "MG-news",
         TWILIO_VERIFY_SERVICE: "VA_test_fake",
         TWILIO_API_BASE: "http://127.0.0.1:12114",
+        // The feed's public switches: nobody's order is learned (the journeys run on the open order), and a parent's yes
+        // turns a teen's learning on, so the parent's-yes journey sees it start. The public defaults otherwise.
+        FEED_PUBLIC: '{"learned":false,"teenPersonal":true,"windowDays":7}',
         // The daily job's secret, so the journeys can knock on it. Plainly fake.
         JOBS_SECRET: "test-only-jobs-secret",
         // Money goes through the stand-in Stripe, never the real one. All plainly fake.
