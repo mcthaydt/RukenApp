@@ -116,10 +116,16 @@ function overlaps(page: Page): Promise<string[]> {
       }
       return { thing, left, top, right, bottom };
     };
+    // A question asked in front of the screen (the cookie card before an answer) holds it: nothing behind it takes a
+    // press, so only what is in it counts.
+    const inFront = document.querySelector("dialog:modal");
+    const reachable = (thing: Element) =>
+      thing.closest("[aria-hidden='true'], [inert]") === null &&
+      (inFront === null || inFront.contains(thing));
     const controls = [
       ...document.querySelectorAll("a, button, input, select, textarea, summary, [role='button']"),
     ]
-      .filter((thing) => thing.closest("[aria-hidden='true'], [inert]") === null)
+      .filter(reachable)
       .filter((thing) => thing.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
       .map(drawn)
       .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
@@ -142,6 +148,7 @@ function overlaps(page: Page): Promise<string[]> {
           thing.closest(
             "a, button, input, select, textarea, summary, [role='button'], [aria-hidden='true'], .friends",
           ) === null &&
+          reachable(thing) &&
           thing.checkVisibility({ visibilityProperty: true, opacityProperty: true })
         );
       })
@@ -149,7 +156,10 @@ function overlaps(page: Page): Promise<string[]> {
       .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
     // The friends' faces float behind the buttons, but a tip over them hides them as surely as it hides a button.
     const faces = [...document.querySelectorAll(".friends")]
-      .filter((thing) => thing.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
+      .filter(
+        (thing) =>
+          reachable(thing) && thing.checkVisibility({ visibilityProperty: true, opacityProperty: true }),
+      )
       .map(drawn)
       .filter((one) => one.right - one.left > 1 && one.bottom - one.top > 1);
     const found: string[] = [];
@@ -242,9 +252,12 @@ async function expectNothingOverlaps(page: Page, paths: readonly string[], when:
         ).toHaveCount(1);
       await wordsHaveSettled(page);
       const where = `${path} at ${size.name}, ${when}`;
-      // Before a yes the card stands at the foot of the screen, so it is checked against every button there.
+      // Before a yes the card asks in front of the screen, which takes no press until an answer.
       if (unanswered && !NO_CARD.includes(path))
-        await expect(page.locator("aside.consent"), `${where}: the cookie card`).toBeVisible();
+        await expect(
+          page.locator("dialog.consent:modal"),
+          `${where}: the cookie card, in front`,
+        ).toBeVisible();
       if (path === "/" || path === "/followed") {
         // The feed's first screen as it opens, with its tips; then the clip with a maker, the tallest column.
         expect.soft(await overlaps(page), `${where}, first screen`).toEqual([]);
@@ -275,9 +288,10 @@ test.describe("signed out", () => {
   });
 });
 
-// Before the cookie question is answered, its card stands at the foot of every screen but Cookies and What we keep.
-// Nothing was checked with it there, so it covered the tabs, Sign in, Back and Help's buttons on phones (seen
-// 2026-11-28). Now each screen ends above it, and this checks the card's buttons and the screen's together.
+// Before the cookie question is answered, its card shows on every screen but Cookies and What we keep. Nothing was
+// checked with it there, so at the foot of the screen it covered the tabs, Sign in, Back and Help's buttons on phones
+// (seen 2026-11-28). Now it asks in front of a dimmed screen, and this checks it is there, in front, and that nothing
+// that can be pressed overlaps.
 test.describe("signed out, before the cookie question is answered", () => {
   test.use({ storageState: NOT_CONSENTED });
 
@@ -291,45 +305,6 @@ test.describe("signed out, before the cookie question is answered", () => {
     await beforeLaunch(context);
     await expectNothingOverlaps(page, paths, "before a cookie answer, before launch");
     await atLaunch(context);
-  });
-
-  test("on the about page, the cookie card never sits on a button, wherever the page is scrolled", async ({
-    page,
-  }) => {
-    test.setTimeout(240_000);
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    for (const size of SIZES) {
-      await page.setViewportSize({ width: size.width, height: size.height });
-      await page.goto("/about");
-      await pageHasSettled(page);
-      await wordsHaveSettled(page);
-      await expect(page.locator("aside.consent")).toBeVisible();
-      // While the card stands at the foot, the page scrolls in the view above it, as the app's screens do.
-      const foot = await page.evaluate(() => document.body.scrollHeight - document.body.clientHeight);
-      expect(foot, "the about page scrolls above the card").toBeGreaterThan(0);
-      for (let at = 0; at <= foot + 48; at += 48) {
-        await page.evaluate(
-          (y) => {
-            document.body.scrollTo(0, y);
-          },
-          Math.min(at, foot),
-        );
-        await page.evaluate(
-          () =>
-            new Promise<void>((done) => {
-              requestAnimationFrame(() => {
-                done();
-              });
-            }),
-        );
-        expect
-          .soft(
-            await overlaps(page),
-            `/about at ${size.name}, scrolled to ${String(Math.min(at, foot))}, before a cookie answer`,
-          )
-          .toEqual([]);
-      }
-    }
   });
 });
 

@@ -184,7 +184,10 @@ test("saying yes from a game's page keeps the maker who brought the person", asy
   await pageHasSettled(page);
   await notNow(page).click();
   await expect(asking(page)).toHaveCount(0);
+  // A new visit asks again, in front of the page: Not now, and the page is the person's to press.
   await page.goto(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  await notNow(page).click();
   await page.getByRole("link", { name: "Play" }).click();
   await expect(page.getByText("To play, Ruken needs")).toBeVisible();
   await agreeButton(page).click();

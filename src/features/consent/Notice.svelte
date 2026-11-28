@@ -16,6 +16,7 @@
     next,
     from,
     card = false,
+    front = false,
     aboveBar = false,
     onNotNow,
     onAgreed,
@@ -28,6 +29,8 @@
     from: string;
     /** The small card at the bottom of a screen, not the screen's own card. */
     card?: boolean;
+    /** The card asks in front of the screen, which waits dimmed behind it until an answer, instead of at its foot. */
+    front?: boolean;
     /** The bar of Home and You is on this screen, so the card sits above it. */
     aboveBar?: boolean;
     onNotNow: () => void;
@@ -55,10 +58,12 @@
   // page how much of the window's foot it takes, with a line of air, as --consent-room; the screen's view ends above it
   // (src/lib/look.css). Measured, since its height changes with the window, the words and the why line.
   $effect(() => {
+    if (front) return;
     const box = cardBox;
-    // Moving above the bar or off it changes where the card stands but not its size, so that is watched too.
-    void aboveBar;
     if (box === undefined) return;
+    // Moving above the bar or off it changes where the card stands but not its size, so the card is placed here,
+    // as the markup places it, and measured again each time.
+    box.classList.toggle("above-bar", aboveBar);
     const root = document.documentElement;
     const measure = () => {
       const room = Math.ceil(innerHeight - box.getBoundingClientRect().top + 8);
@@ -80,6 +85,26 @@
   $effect(() => {
     if (card && reason !== null) agreeButton?.focus();
   });
+
+  // In front, the card is a dialog that holds the screen until an answer: everything behind it takes no press and no
+  // focus, so nothing of the page is ever under a button of the card, and the pad and Tab stay on its answers. It is
+  // drawn open from the server, so it asks before scripts load; once they have, it is opened again as the screen's one
+  // question. Escape is Not now.
+  let frontBox = $state<HTMLDialogElement>();
+  $effect(() => {
+    const box = frontBox;
+    if (box === undefined || box.matches(":modal")) return;
+    box.close();
+    box.showModal();
+    // Opening it puts the focus on I agree, which would draw its ring for a tap; the card itself holds the focus, so
+    // the first Tab or move of the pad lands on I agree. A press that needs the yes still focuses I agree (above).
+    if (reason === null) box.focus();
+  });
+
+  function escaped(event: Event): void {
+    event.preventDefault();
+    onNotNow();
+  }
 
   /** "Not now" on the notice's own screen leaves it: to the Ruken page the person came from, or the feed. Never back to another website. */
   function leave(event: MouseEvent): void {
@@ -111,7 +136,24 @@
   </form>
 {/snippet}
 
-{#if card}
+{#if card && front}
+  <dialog bind:this={frontBox} class="consent front" aria-labelledby="consent-title" open oncancel={escaped}>
+    <h2 id="consent-title">Cookies?</h2>
+    {#if reason !== null}
+      <p class="why">{WHY[reason]}</p>
+    {/if}
+    <p>
+      We save a few small things in your browser. They keep you signed in, let you play and thank the maker
+      who sent you. Nothing is saved until you say yes.
+    </p>
+    <p>No ads. We never sell your data.</p>
+    <div class="consent-answers">
+      {@render answer()}
+      <button type="button" class="safe" onclick={onNotNow}>Not now</button>
+    </div>
+    <p class="note"><a class="go" href="/privacy">What we keep</a></p>
+  </dialog>
+{:else if card}
   <!-- Small, so the screen keeps most of the window: the question, its one line, the two answers, and What we keep
        beside the question. The whole story is on What we keep, and on the notice's own screen. -->
   <aside bind:this={cardBox} class="consent" class:above-bar={aboveBar} aria-labelledby="consent-title">

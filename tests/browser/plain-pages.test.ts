@@ -121,7 +121,7 @@ test.describe("before anyone has said yes to cookies", () => {
   test("the landing page's cookie notice stays glass over its wall of moving clips", async ({ page }) => {
     await page.goto("/about");
     await expect(page.locator(".wall video").first()).toBeAttached();
-    const notice = page.locator("aside.consent");
+    const notice = page.locator("dialog.consent");
     await expect(notice).toBeVisible();
     const blur = await notice.evaluate(
       (element) =>
