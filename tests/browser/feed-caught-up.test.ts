@@ -40,20 +40,28 @@ const clips = (page: Page): Locator => page.locator("section[data-slug]");
 const overlap = (a: Box, b: Box): boolean =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-/** The boxes of every control a person can see on screen. */
+/**
+ * The boxes of every control a person can see on screen. Read in the page in one go: the feed keeps every clip it has
+ * shown, so with many games live there are hundreds of controls, and asking for each box in turn ran past the test's
+ * time (#440's full run 46111852995).
+ */
 async function controlBoxes(page: Page): Promise<{ name: string; box: Box }[]> {
-  const found: { name: string; box: Box }[] = [];
-  for (const control of await page
-    .locator("button:visible, a[href]:visible:not([aria-hidden='true'])")
-    .all()) {
-    const box = await control.boundingBox();
-    if (box === null || box.width === 0 || box.height === 0) continue;
-    const window = page.viewportSize() ?? { width: 0, height: 0 };
-    if (box.y >= window.height || box.y + box.height <= 0 || box.x >= window.width || box.x + box.width <= 0)
-      continue;
-    found.push({ name: (await control.getAttribute("aria-label")) ?? (await control.innerText()), box });
-  }
-  return found;
+  return page.evaluate(() => {
+    const found: { name: string; box: { x: number; y: number; width: number; height: number } }[] = [];
+    for (const control of document.querySelectorAll<HTMLElement>("button, a[href]")) {
+      if (control.tagName === "A" && control.getAttribute("aria-hidden") === "true") continue;
+      if (!control.checkVisibility({ visibilityProperty: true })) continue;
+      const box = control.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) continue;
+      if (box.y >= window.innerHeight || box.bottom <= 0 || box.x >= window.innerWidth || box.right <= 0)
+        continue;
+      found.push({
+        name: control.getAttribute("aria-label") ?? control.innerText,
+        box: { x: box.x, y: box.y, width: box.width, height: box.height },
+      });
+    }
+    return found;
+  });
 }
 
 /** Presses the down arrow, one clip at a time, until the clip at `index` is the one on screen. */
@@ -101,7 +109,11 @@ test("after the new games, the feed says You're all caught up, and keeps going",
     };
     expect(page.clips.length).toBeGreaterThanOrEqual(4);
     siteNext = page.next;
-    await route.fulfill({ response, json: { ...page, caughtUp: page.clips[2]?.key, next: STAND_IN_NEXT } });
+    // Six clips, so its end, and the ask for the page after it, come soon however many games are live.
+    await route.fulfill({
+      response,
+      json: { ...page, clips: page.clips.slice(0, 6), caughtUp: page.clips[2]?.key, next: STAND_IN_NEXT },
+    });
   });
 
   await page.goto("/");
