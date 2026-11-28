@@ -69,7 +69,7 @@ test.describe("signed out", () => {
 
   test("no screen scrolls the page, the bar covers nothing, and Cookies fits", async ({ page }) => {
     // Sign in, Join and Forgot password are forms taller than a small phone: they scroll inside their view.
-    for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/cookies", "/your-turn"]) {
+    for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/cookies", "/make", "/your-turn"]) {
       await opened(page, path);
       expect((await overflow(page)).page, path).toBe(0);
       await expectViewAboveTheBar(page, path);
@@ -351,6 +351,16 @@ test.describe("a phone held sideways", () => {
     await page.goto("/about");
     await page.locator("main.about").waitFor();
     await expect(turnUpright(page)).toHaveCount(0);
+  });
+
+  // The maker's area filled the window's height and then kept a line of air under it, so it scrolled by that line
+  // (found 2026-11-28 building the plus's signed-out screen). Signed in, Your games' own words are taller than a phone
+  // held sideways; its sideways layout waits for the owner's multi-screen pass (progress.md).
+  test("Your games fits sideways when signed out", async ({ page }) => {
+    await asInstalled(page);
+    await opened(page, "/make");
+    await expect(page.getByRole("heading", { name: "Made a game?" })).toBeVisible();
+    expect(await overflow(page), "/make signed out, sideways").toEqual({ page: 0, view: 0 });
   });
 
   test("opened from the Home Screen, it works sideways with the bar on the right", async ({ page }) => {

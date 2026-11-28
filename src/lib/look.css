@@ -1680,7 +1680,9 @@ form > * + button:not(.quiet) {
     --foot: 0px;
   }
 
-  :root:has(nav.bar) :is(main.card, .screen) {
+  /* A card keeps a line of air under it. A maker's screen fills the window's whole height already, so air under it
+     would only be room to scroll (the screen's own main keeps its air inside it). */
+  :root:has(nav.bar) main.card {
     margin-bottom: 1rem;
   }
 

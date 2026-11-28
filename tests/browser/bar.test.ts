@@ -106,7 +106,7 @@ test("a maker's page has the bar, and nothing hidden under it", async ({ page },
   await showTheOwner(page, testInfo, "a maker's page with the bar");
 });
 
-test("Home goes to the feed, and You and Add a game to sign in when nobody is signed in", async ({
+test("Home goes to the feed, You to sign in, and Add a game to the maker's pitch when nobody is signed in", async ({
   page,
 }) => {
   await page.goto(`/g/${game.slug}`);
@@ -114,7 +114,9 @@ test("Home goes to the feed, and You and Add a game to sign in when nobody is si
   await expect(page).toHaveURL(/\/sign-in/);
   await page.goto(`/g/${game.slug}`);
   await bar(page).getByRole("link", { name: "Add a game", exact: true }).click();
-  await expect(page).toHaveURL(/\/sign-in/);
+  // Signed out, Your games' place says what Ruken gives a maker, with its own Join and Sign in (make-signed-out.test.ts).
+  await expect(page).toHaveURL("/make");
+  await expect(page.getByRole("heading", { name: "Made a game?" })).toBeVisible();
   await page.goto(`/g/${game.slug}`);
   await bar(page).getByRole("link", { name: "Home", exact: true }).click();
   await expect(page).toHaveURL("/");

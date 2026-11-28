@@ -555,7 +555,8 @@
       return;
     }
     const step = stepFor(event.key, event.shiftKey);
-    if (step === 0) return;
+    // With no clips there is nothing to move to, so up and down are the screen's own: the pad goes to the cookie card.
+    if (step === 0 || clips.length === 0) return;
     // A field keeps its keys. Space presses a focused link or button, so it moves the clip only from nothing in particular.
     if (target?.closest("input, textarea, select, [contenteditable]") != null) return;
     if (event.key === " " && target?.closest("a, button, summary") != null) return;

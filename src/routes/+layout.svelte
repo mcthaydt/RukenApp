@@ -73,6 +73,10 @@
   // The pages the cookie notice sends a person to read never show it over themselves: Cookies, and What we keep (the
   // owner, 2026-11-28: the notice covers it and "makes it too hard to read"). Everywhere else the yes is asked as before.
   const READ_IN_PEACE: readonly string[] = ["/cookies", "/privacy"];
+  // Nor the maker's pitch, which only a stranger sees (the plus, signed out): its Join Ruken and Sign in each need the
+  // yes and ask it on their own screen, and a card over them would hide the screen's only buttons (review 1 of #462),
+  // even one an earlier press asked for (Like on the feed, then the plus: review 2).
+  const ASKED_NEXT: readonly string[] = ["/make"];
 
   // A game's own page, its play screen and its maker's test play name the game in the tab; every other screen, a
   // missing page included, has the base title.
@@ -247,7 +251,7 @@
 {/if}
 
 <!-- A press that needs the yes opens the card again, even after "Not now", and says what for (consent/ask.svelte.ts). -->
-{#if !data.consented && (!notNow || consentAsk.reason !== null) && !READ_IN_PEACE.includes(page.route.id ?? "")}
+{#if !data.consented && (!notNow || consentAsk.reason !== null) && !READ_IN_PEACE.includes(page.route.id ?? "") && !ASKED_NEXT.includes(page.route.id ?? "")}
   <Notice
     card
     aboveBar={barShown}

@@ -123,6 +123,12 @@ function onScreen(element: Element): boolean {
   return hit === null || element.contains(hit) || !pinned(hit);
 }
 
+/** Whether the element is inside the window, so no scroll would show it, yet a pinned part is drawn over it. */
+function covered(element: Element): boolean {
+  const box = element.getBoundingClientRect();
+  return box.top >= 0 && box.bottom <= innerHeight && !onScreen(element);
+}
+
 /** Where the focus may go: inside an open sheet, inside a menu that holds the focus, or anywhere on the screen. */
 function scope(): Element | Document {
   const sheets = [...document.querySelectorAll<HTMLDialogElement>("dialog[open]")].filter((sheet) =>
@@ -241,8 +247,16 @@ export function startPad(options: PadOptions): () => void {
     const target = shown[index];
     // A move stays in its part of the screen while that part has more that way, even scrolled out of sight: down goes
     // on through a long page before it drops to the pinned bar, and up through a list of results before the search box.
+    // From one pinned part to the next one that way (the bar up to the cookie card just above it), the move goes there:
+    // the screen behind both is not between them.
+    if (target !== undefined && pinned(from) && pinned(target)) {
+      focusOn(target);
+      return;
+    }
     if (target !== undefined && leaves(from, target, way)) {
-      const rest = others.filter((control) => !leaves(from, control, way));
+      // Not one that is in the window but under a pinned part (the cookie card over the foot of a page): the person
+      // cannot see it, and the next press would start over from the top.
+      const rest = others.filter((control) => !leaves(from, control, way) && !covered(control));
       const further =
         rest[
           nextBox(

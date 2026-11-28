@@ -92,10 +92,15 @@ test("Your games shows each game as one link with where it stands, and Sent back
   await expect(page).toHaveURL(`/make/${draft.slug}/line`);
 });
 
-test("signed out, the maker's area asks for sign-in", async ({ page }) => {
+test("signed out, the maker's area shows the pitch, and a new game's question asks for sign-in", async ({
+  page,
+}) => {
   await page.goto("/make");
+  await expect(page).toHaveURL("/make");
+  await expect(page.getByRole("heading", { name: "Made a game?" })).toBeVisible();
 
-  await expect(page).toHaveURL("/sign-in?next=%2Fmake");
+  await page.goto("/make/new");
+  await expect(page).toHaveURL("/sign-in?next=%2Fmake%2Fnew");
 });
 
 // ---- The questions ---------------------------------------------------------------------------------------------
