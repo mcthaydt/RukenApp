@@ -41,6 +41,7 @@ let live: Awaited<ReturnType<typeof addGame>>;
 let makersPage: string;
 let makersLink: string;
 let draft: string;
+let adultDraft: string;
 let newMaker: { number: string; password: string; draft: string };
 let friend: { id: string; handle: string };
 
@@ -65,6 +66,9 @@ test.beforeAll(async ({ browser, request }) => {
     draft = (await addDraft(page)).slug;
     // Every question answered, so its agreement and Check and send open, not the next question.
     await fillAnswers(draft, { line: true, files: true, videos: true, age: "age_12" });
+    // A third, rated 18+ with its marks not chosen yet: only an 18+ game is asked its content warnings.
+    adultDraft = (await addDraft(page)).slug;
+    await fillAnswers(adultDraft, { line: true, files: true, videos: true, age: "age_18" });
   } finally {
     await context.close();
   }
@@ -149,11 +153,14 @@ const signedIn = () => [
  * every room of their page's editor. A game's play screen is its frame, with no words of Ruken's, so it is left out. */
 const makersOwn = () => [
   `/make/${live.slug}`,
-  ...["name", "line", "files", "upright", "wide", "age", "marks", "websites", "take-off"].map(
+  ...["name", "line", "files", "upright", "wide", "age", "websites", "take-off"].map(
     (question) => `/make/${live.slug}/${question}`,
   ),
+  // A 12+ game is asked its content warnings only on its way to 18+, which the age screen's choice says in the address.
+  `/make/${live.slug}/marks?age=18`,
   // The agreement is read by the new maker below: this maker has agreed already, so it moves on to Check and send.
-  ...["check", "marks", "throw-away"].map((screen) => `/make/${draft}/${screen}`),
+  ...["check", "throw-away"].map((screen) => `/make/${draft}/${screen}`),
+  `/make/${adultDraft}/marks`,
   "/make/page",
   ...["address", "name", "line", "colours", "photo"].map((room) => `/make/page/${room}`),
   "/make/page/links",
@@ -292,8 +299,10 @@ function faintWords(page: Page): Promise<{ faint: string[]; read: number }> {
 
 async function expectEveryWordReadable(page: Page, paths: readonly string[], when: string): Promise<void> {
   for (const path of paths) {
-    await page.goto(path);
+    const answer = await page.goto(path);
     await pageHasSettled(page);
+    // A screen that answers "We can't find that page" has none of its own words to read; only the missing page should.
+    expect.soft(answer?.status(), `${path}, ${when}: found`).toBe(path === "/no-such-page-here" ? 404 : 200);
     // The feed's clips come in after the page itself: its words are read once the first clip is the current one.
     if (path === "/")
       await expect(page.locator("section[data-slug][data-current='true']").first()).toBeAttached();
