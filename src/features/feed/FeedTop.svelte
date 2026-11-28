@@ -27,7 +27,9 @@
 
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { goto, invalidate, preloadData } from "$app/navigation";
+  import { beforeNavigate, goto, preloadData } from "$app/navigation";
+  import { onMount } from "svelte";
+  import { arrival, askedAhead, kept, quietRefresh, settingOff } from "./kept.svelte.ts";
   import Icon from "../../lib/icon.svelte";
   import {
     LB,
@@ -60,42 +62,49 @@
     const tab = tabFrom(heading ?? on, step);
     if (tab === null) return;
     heading = tab.key;
-    void (async () => {
-      // A page asked for ahead longer ago than FRESH_MS may no longer say how things are: the router would use it all
-      // the same, so throw it away (any invalidation does; nothing on screen loads with this name) and go fresh.
-      if (readied === tab.href && performance.now() - readiedAt > FRESH_MS)
-        await invalidate("ruken:asked-ahead");
-      readied = null;
-      await goto(tab.href);
-    })().finally(() => {
+    void goto(tab.href).finally(() => {
       if (heading === tab.key) heading = null;
     });
   }
 
-  // A move waits for the next tab's page before it slides, so a swipe that asked for it only once it had gone far
-  // enough felt slow (the owner, 2026-11-28, after trying a trackpad swipe: "a bit slow, but it works"). So a swipe asks
-  // for that page as soon as it sets off, and the move uses it if it is at most FRESH_MS old. Never asked any earlier:
-  // a page kept from before shows what has changed since wrongly, a friend's send, a like or a follow (#447 reviews).
-  const FRESH_MS = 2000;
+  // A move waits for the next tab's page before it slides, and the site takes 0.2 to 1 s to answer (the owner,
+  // 2026-11-28, after trying a trackpad swipe: "a bit slow, but it works"; then, 06:33 UTC, "Instant slide done
+  // carefully"). So each tab asks for the page beside it once it has come in, and a swipe that sets off the other way
+  // asks for that one; the router keeps one page asked for ahead, and a move by swipe, press or key slides in with it.
+  // kept.svelte.ts keeps that page honest: the person's own presses show over it, a follow asks for it again, and a page
+  // that was old when it came in is asked for again quietly.
   let readied: string | null = null;
-  let readiedAt = 0;
   function ready(step: 1 | -1): void {
     // Not while a move is under way: asking for a page past it would throw away the page that move is about to use.
-    if (heading !== null) return;
+    if (heading !== null || kept.quiet) return;
     const tab = tabFrom(on, step);
-    if (tab === null) return;
-    // The router keeps one page asked for ahead and answers a second ask for it from that one, so one ask a swipe.
-    if (tab.href === readied && performance.now() - readiedAt <= FRESH_MS) return;
-    const forget = tab.href === readied ? invalidate("ruken:asked-ahead") : Promise.resolve();
+    if (tab === null || tab.href === readied) return;
     readied = tab.href;
-    readiedAt = performance.now();
-    void forget
-      // Not once a move has set off meanwhile: it asks for its own page.
-      .then(async () => (heading === null && readied === tab.href ? preloadData(tab.href) : undefined))
-      .catch(() => {
-        if (readied === tab.href) readied = null;
-      });
+    askedAhead(tab.href);
+    preloadData(tab.href).catch(() => {
+      if (readied === tab.href) readied = null;
+    });
   }
+  $effect(() => {
+    // Read here so the tab it is on is the one it asks from; again once a follow has thrown the page away; and not
+    // until a quiet refresh is in, since its invalidation would throw away a page asked for meanwhile.
+    const here = on;
+    const stale = kept.stale;
+    if (kept.quiet) return;
+    readied = null;
+    // Once the tab has come in and has nothing left to do, so asking never slows the tab itself.
+    const soon = setTimeout(() => {
+      if (here === on && stale === kept.stale) ready(tabFrom(here, 1) === null ? -1 : 1);
+    }, 500);
+    return () => {
+      clearTimeout(soon);
+    };
+  });
+  // A tab shown from a page asked for well before asks the site again once it is in, quietly (kept.svelte.ts).
+  onMount(() => {
+    if (arrival(location.pathname).refresh) void quietRefresh();
+  });
+  beforeNavigate(settingOff);
 
   // Where a one-finger touch started; a second finger, a touch that starts on an open sheet, or one that starts on the
   // screen's edge, where the browser's own Back and Forward swipe lives (tabs.ts), is not a swipe.
