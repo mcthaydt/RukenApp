@@ -127,7 +127,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 |---|---|---|---|
 | Apps-kit practice alignment (lane 1) | #292 | gap list written; fixes in the pull request | not measured (short path, no plan) |
 | Phone sign-in, branch B (lane 3) | #209 | audit PASS at `628803f`, waiting on its full run | not measured (no plan checklist) |
-| Slice 3, the feed and the maker's page | unit K not started | units C, F, H, I and D merged (#246, #248, #247, #249, #286, #285) | 90% (28 of 31 plan steps ticked; one struck) |
+| Slice 3, the feed and the maker's page | unit K moved to slice 4, Pages (the owner, 2026-11-28 02:08 UTC: "Yes", to holding the social icons there and closing slice 3 without them); its build waits as draft #443 | units C, F, H, I and D merged (#246, #248, #247, #249, #286, #285); next, the slice end | 100% of what stays in slice 3 (28 of 28 steps; unit K's 3 steps moved) |
 | Ruken from your computer, PR 1 (lane 3: computer keys, press-Yes sign-in, videos by command line) | branch `claude/project-thread-ps17ej` | built; all checks green locally; waiting for the implementation audit | 100% (12 of 12 PR 1 steps ticked) |
 | Ruken from your computer, PR 2 (lane 2: games and GitHub by command line, `sendWhenAgreed`) | branch `claude/project-thread-ii8h7y` | built on main 5f1e0c7; unit, pg and journeys A5 to A7 green locally; waiting for the fresh review and a pull request slot | 100% (5 of 5 PR 2 steps ticked) |
 | Slice 2 retrospective | none yet | owed (gap P5) | not started |
