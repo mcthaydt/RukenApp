@@ -442,6 +442,9 @@ test("a folder that cannot be right is refused beside its box", async ({ page })
   const { slug } = await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
   await page.getByLabel(TINY_GAME).check();
+  // Ticking a game asks GitHub for its branches. The Branch box is filled from that answer, so the press waits for
+  // it, as a person waits for the spinner to go (the fold-out once moved as it went: #464, run 46138641175).
+  await expect(page.getByRole("progressbar", { name: "Looking up branches" })).toHaveCount(0);
   await page.getByText("Change the branch or folder").click();
   await expect(
     page.getByText("Pick the branch your game is on. Main branch is the usual one."),

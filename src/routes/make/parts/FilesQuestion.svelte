@@ -184,6 +184,8 @@
         problem={problems?.repo}
       />
     </div>
+    <!-- The spinner sits at the end of the list's hint line and takes no room of its own: a line that came and went would
+         move the fold-out below it 26 px as GitHub answered, and a tap made then would land under it. -->
     {#if lookingUp !== null}
       <p class="note" aria-busy="true">
         <span class="spinner" role="progressbar" aria-label="Looking up branches"></span>
