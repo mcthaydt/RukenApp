@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { finishSignUpForm, freshNumber, nationalOf, pageHasSettled, signInAs } from "./support/account.ts";
 import { addGame, connectGitHubFromFiles, holdAnswersTo, startAtFiles } from "./support/game.ts";
 import { beforeLaunch } from "./support/launch.ts";
-import { showTheOwner } from "./support/look.ts";
+import { showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Every wait shows it (this-repo, "Every wait shows it"). Each journey holds the site's answer back, the way a slow
@@ -166,6 +166,36 @@ test("ticking another game on GitHub says the branches are being looked up", asy
   await expect(spinner).toBeVisible();
   held.release();
   await expect(spinner).toHaveCount(0);
+});
+
+test("looking up the branches moves nothing on the screen, so a tap on the fold-out lands where it was", async ({
+  page,
+}) => {
+  const { slug } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  await pageHasSettled(page);
+  const held = await holdAnswersTo(page, /\/branches/);
+  const fold = page.getByText("Change the branch or folder");
+  const top = async () => (await fold.boundingBox())?.y;
+  // Each line rises into place as the screen comes in; the place counts once they have stopped.
+  await wordsHaveSettled(page);
+  const before = await top();
+
+  const radios = page.getByRole("radio");
+  const unticked = (await radios.nth(0).isChecked()) ? radios.nth(1) : radios.nth(0);
+  await unticked.check();
+  const spinner = page.getByRole("progressbar", { name: "Looking up branches" });
+  await expect(spinner).toBeVisible();
+  expect(await top()).toBe(before);
+  // The answer lands, the spinner goes, and the fold-out is still where a tap made a moment ago was aimed
+  // (make-walk.test.ts flaked on this: #464, run 46138641175).
+  const aimed = await fold.boundingBox();
+  held.release();
+  await expect(spinner).toHaveCount(0);
+  expect(await top()).toBe(before);
+  if (aimed === null) throw new Error("the fold-out is not on the screen");
+  await page.mouse.click(aimed.x + aimed.width / 2, aimed.y + aimed.height / 2);
+  await expect(page.getByLabel("Branch", { exact: true })).toBeVisible();
 });
 
 test("Wishlist shows it is busy while it sends, and keeps the keyboard's focus", async ({
