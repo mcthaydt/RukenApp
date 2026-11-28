@@ -69,6 +69,19 @@ export function countryOf(code: string): OpenCountry | null {
   return OPEN_COUNTRIES.find((country) => country.code === code) ?? null;
 }
 
+/**
+ * The number a form's country and phone fields name, as E.164, or null for a closed country or a number that cannot be
+ * one. A number typed with its own "+" (or "00") names its own country, so it must still start with the dialing code of
+ * the open country that was picked: "+44 ..." under United States is a closed country's number, and is refused here
+ * before anything is kept or texted.
+ */
+export function typedNumber(countryCode: string, phone: string): string | null {
+  const country = countryOf(countryCode);
+  if (country === null) return null;
+  const number = toE164(country.dialing, phone);
+  return number !== null && number.startsWith(country.dialing) ? number : null;
+}
+
 /** A number as /me shows it to its owner: "+1 312 555 0142" for a North American one, the digits as they are otherwise. */
 export function shownAs(number: string): string {
   const north = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(number);

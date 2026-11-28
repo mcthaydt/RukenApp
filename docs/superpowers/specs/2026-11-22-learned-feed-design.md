@@ -248,13 +248,15 @@ Steps:
 - **I5.** The parent's page (`/parent/<token>`) is a page a person's browser opens, so it is consent-gated: without `rk_consent` it shows the consent notice first and records the answer only after "I agree". A test shows no `ParentYes` change without consent. Asking a parent needs the teen signed in, so it already has consent.
 - **I4.** Journey (CRUD): ask, see it waiting, the parent says yes (test texts as in the sign-up journeys), the full feed starts, the parent turns it off, the teen asks again and cancels; an ended ask's link says so.
 
+Built as `ParentAsk` (the name `parentYes` is a private setting's key, which the private-boundary test keeps out of this repo). Accounts hold no first name, so the ask screen asks for the teen's first name, used in the text only and never kept.
+
 Steps:
-- [ ] 1. Journey I4, failing.
-- [ ] 2. Migration and purge.
-- [ ] 3. The ask and the text, test first.
-- [ ] 4. The parent's page.
-- [ ] 5. The full feed follows the yes (A5's rule with a yes), test first; and with `teenPersonal` off, a teen with a yes is `crowd` and no view is stored (10.2), test first.
-- [ ] 6. `verify`; shots.
+- [x] 1. Journey I4, failing.
+- [x] 2. Migration and purge.
+- [x] 3. The ask and the text, test first.
+- [x] 4. The parent's page.
+- [x] 5. The full feed follows the yes (A5's rule with a yes), test first; and with `teenPersonal` off, a teen with a yes is `crowd` and no view is stored (10.2), test first.
+- [x] 6. `verify`; shots.
 
 ### Unit K: high-taste players (public half)
 

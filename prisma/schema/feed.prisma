@@ -82,3 +82,30 @@ model GoodPickAsked {
   @@unique([userId, gameId])
   @@index([gameId])
 }
+
+enum ParentAnswer {
+  yes
+  no
+}
+
+/// A teen's ask for a parent's yes to a feed that learns from them (learned feed spec, unit I). The parent gets a text with
+/// a link; the link's secret part is kept only as `tokenHash`, and the parent's number only as `phoneHash`, so this row
+/// can never text anyone again. Open while `answer` and `revokedAt` are null and `askedAt` is under five days old. A yes
+/// holds until `revokedAt` (the parent's Turn it off); a cancelled or ended ask has `revokedAt` and no answer. Every row
+/// goes with the teen's account (deletion.ts).
+model ParentAsk {
+  id         String        @id @default(cuid(2))
+  teenUserId String
+  /// HMAC of the parent's E.164 number under the server's secret, as phone.ts's hashNumber makes it.
+  phoneHash  String
+  /// SHA-256 of the link's secret part, in hex.
+  tokenHash  String        @unique
+  askedAt    DateTime      @db.Timestamptz
+  answeredAt DateTime?     @db.Timestamptz
+  answer     ParentAnswer?
+  revokedAt  DateTime?     @db.Timestamptz
+
+  teen User @relation(fields: [teenUserId], references: [id], onDelete: Cascade)
+
+  @@index([teenUserId, askedAt])
+}
