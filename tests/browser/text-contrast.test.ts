@@ -1,8 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
-import { pageHasSettled, signInAs } from "./support/account.ts";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
 import { givePage } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { asInstalled } from "./support/installed.ts";
+import { atLaunch, beforeLaunch } from "./support/launch.ts";
 import { wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -14,8 +15,9 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // What is behind a word is read from what the browser stacks under its middle, top to bottom, until something opaque:
 // each colour on the way is blended in. Words over a picture (a video, an image, a gradient, frosted glass over a moving
 // clip) have no one colour behind them and are left out; the feed's words over clips carry their own shadow and glass
-// for that (the owner, 2026-11-27). A disabled button is left out too, as WCAG leaves it out. Pages that scroll are
-// checked from top to foot.
+// for that (the owner, 2026-11-27), and words on glass are glass.test.ts's to check (faint over a white clip). A
+// disabled button is left out too, as WCAG leaves it out. Pages that scroll are checked from top to foot. Each screen
+// is read signed out, as a player with nothing of their own and as a maker with a live game, before launch and after.
 
 const SIZES = [
   { name: "320 by 568", width: 320, height: 568 },
@@ -47,36 +49,61 @@ test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
 });
 
+/** Search for something no game or maker is called, so Search says it found nothing. */
+const NOTHING_FOUND = "/search?q=zzzzqqqq";
+
 const signedOut = () => [
   "/",
   "/followed",
   "/your-turn",
   "/search",
   `/search?q=${encodeURIComponent(live.name)}`,
+  NOTHING_FOUND,
   `/g/${live.slug}`,
   `/${makersPage}`,
   "/about",
   "/help",
+  "/help/get-your-game-on-ruken",
+  "/help/github",
+  "/help/how-the-feed-works",
+  "/help/record-screen",
   "/privacy",
   "/terms",
   "/cookies",
+  "/legal/maker-agreement",
   "/sign-in",
+  "/sign-up",
   "/join",
   "/forgot-password",
+  "/goodbye",
+  "/no-such-page-here",
 ];
+/** What anyone signed in can open, with or without games of their own. */
 const signedIn = () => [
   "/",
   "/followed",
   "/your-turn",
+  "/your-turn/stopped",
+  "/search",
   `/search?q=${encodeURIComponent(live.name)}`,
+  NOTHING_FOUND,
   `/g/${live.slug}`,
   `/${makersPage}`,
   "/make",
+  "/make/new",
   "/me",
   "/me/saved",
   "/me/reposts",
+  "/me/computers",
+  "/me/password",
+  "/me/link",
+  "/me/delete",
   "/settings/feed",
+  "/no-such-page-here",
 ];
+/** A maker's own screens besides: their game's page in Your games, and their page's editor. A game's play screen is
+ * its frame, with no words of Ruken's, so it is left out. */
+const makersOwn = () => [`/make/${live.slug}`, "/make/page", "/make/page/links"];
 
 /** Each line of words on screen that is too faint against what is behind it, with its numbers, and how many were read. */
 function faintWords(page: Page): Promise<{ faint: string[]; read: number }> {
@@ -235,22 +262,48 @@ async function expectEveryWordReadable(page: Page, paths: readonly string[], whe
   }
 }
 
+/** Each screen read after launch (Play) and the day before (Wishlist), and the browser left at launch. */
+async function beforeAndAfterLaunch(
+  page: Page,
+  context: BrowserContext,
+  paths: readonly string[],
+  who: string,
+): Promise<void> {
+  await expectEveryWordReadable(page, paths, `${who}, after launch`);
+  await beforeLaunch(context);
+  await expectEveryWordReadable(page, paths, `${who}, before launch`);
+  await atLaunch(context);
+}
+
 for (const size of SIZES) {
   test.describe(`at ${size.name}`, () => {
     test.use({ viewport: { width: size.width, height: size.height } });
 
-    test("signed out, every word on every screen is easy to read", async ({ page }) => {
-      test.setTimeout(240_000);
-      await expectEveryWordReadable(page, signedOut(), "signed out");
+    test("signed out, every word on every screen is easy to read, before launch and after", async ({
+      page,
+      context,
+    }) => {
+      test.setTimeout(360_000);
+      await beforeAndAfterLaunch(page, context, signedOut(), "signed out");
     });
 
-    test("signed in as a maker with a live game, every word on every screen is easy to read", async ({
+    test("signed in as a player with nothing of their own, every word is easy to read, before launch and after", async ({
       page,
+      context,
     }) => {
-      test.setTimeout(240_000);
+      test.setTimeout(360_000);
+      await signUp(page);
+      await beforeAndAfterLaunch(page, context, signedIn(), "a player");
+    });
+
+    test("signed in as a maker with a live game, every word is easy to read, before launch and after", async ({
+      page,
+      context,
+    }) => {
+      test.setTimeout(360_000);
       await signInAs(page, live.maker.number, live.maker.password);
       await pageHasSettled(page);
-      await expectEveryWordReadable(page, signedIn(), "signed in");
+      await beforeAndAfterLaunch(page, context, [...signedIn(), ...makersOwn()], "a maker");
     });
   });
 }
