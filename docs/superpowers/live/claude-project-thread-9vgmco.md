@@ -1,4 +1,0 @@
-- Task: review 2 fixes for #451 (contrast journey reads the maker, page-editing and draft screens, and filled lists).
-- Last commit: 6c4d8af
-- Next step: push, update the PR body, hand to review 3.
-- Open decisions: none. Updated 2026-11-28 09:10 UTC.
