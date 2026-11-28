@@ -1,0 +1,58 @@
+import { expect, test, type CDPSession, type Locator, type Page } from "@playwright/test";
+import { addGame } from "../support/game.ts";
+import { pageHasSettled } from "../support/account.ts";
+import { forgetRateLimits } from "../support/rate-limits.ts";
+import { PAD, plugInPad, pressPad } from "../support/pad.ts";
+
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(400_000);
+  for (let made = 0; made < 3; made++) { await forgetRateLimits(); await addGame(browser, request); }
+});
+test.beforeEach(async ({ page }) => { await forgetRateLimits(); await plugInPad(page); });
+
+const slideRunning = (page: Page) => page.evaluate(() => document.getAnimations().filter((a) =>
+  (a.effect as KeyframeEffect | null)?.pseudoElement?.startsWith("::view-transition") === true).length > 0);
+
+async function outAndBack(page: Page, clips: Locator, back: "browser" | "arrow") {
+  const on = clips.nth(2);
+  await on.scrollIntoViewIfNeeded();
+  await expect(on).toHaveAttribute("data-current", "true");
+  await pageHasSettled(page);
+  await on.locator("a.gamelink").click();
+  await expect(page).toHaveURL(/\/g\//);
+  await expect(page.getByRole("link", { name: "Back to the feed" })).toBeVisible();
+  await expect.poll(() => slideRunning(page)).toBe(false);
+  if (back === "browser") await page.goBack({ waitUntil: "commit" });
+  else await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect.poll(async () => (await slideRunning(page)) && (await page.locator("main.feed").count()) > 0, { intervals: [10] }).toBe(true);
+}
+
+for (const how of ["wheel", "wheel-after"] as const) for (const way of ["down", "up"] as const)
+test(`${how} ${way} during Back slide`, async ({ page }) => {
+  test.skip(test.info().project.name !== "computer");
+  test.setTimeout(120_000);
+  const cdp: CDPSession = await page.context().newCDPSession(page);
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const clips = page.locator("main.feed section[data-slug]");
+  await expect.poll(() => clips.count()).toBeGreaterThanOrEqual(3);
+  const results: string[] = [];
+  for (let round = 1; round <= 4; round++) {
+    await page.waitForTimeout(500);
+    const want = await clips.nth(way === "down" ? 3 : 1).getAttribute("data-slug");
+    await outAndBack(page, clips, "arrow");
+    if (how === "wheel-after") await expect.poll(() => slideRunning(page)).toBe(false);
+    const during = await slideRunning(page);
+    if (how !== "pad") {
+      const { width, height } = page.viewportSize()!;
+      for (let i = 0; i < 6; i++) await cdp.send("Input.dispatchMouseEvent", { type: "mouseWheel", x: width / 2, y: height / 2, deltaX: 0, deltaY: way === "down" ? 120 : -120 });
+    } else if (false) await pressPad(page, way === "down" ? PAD.down : PAD.up);
+    await page.waitForTimeout(1500);
+    const got = await page.locator("main.feed section[data-current=true]").getAttribute("data-slug");
+    const idx = await clips.evaluateAll((els, g) => els.findIndex((e) => e.getAttribute("data-slug") === g), got);
+    const st = await page.evaluate(() => document.querySelector("main.feed")?.scrollTop);
+    results.push(`round ${round}: slideDuring=${during} ok=${got === want} idx=${idx} top=${st}`);
+  }
+  console.log(how, way, results.join(" | "));
+  expect(results.every((r) => r.endsWith("ok=true")), results.join(" | ")).toBe(true);
+});
