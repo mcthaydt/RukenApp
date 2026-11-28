@@ -100,6 +100,8 @@ async function answersThePadReaches(page: Page, stopAt: Answer | null = null): P
 
 /** On the feed, goes with the pad to the answer, and presses A on it. */
 async function pressWithThePad(page: Page, wanted: Answer): Promise<void> {
+  // A walk along a full feed waits for the focus to rest after each press: the time the other walks here are given.
+  test.setTimeout(120_000);
   await page.goto("/");
   await answersThePadReaches(page, wanted);
   expect(await focusedName(page), `the pad never reaches ${wanted}`).toBe(wanted);
