@@ -31,7 +31,7 @@ verify, postgres and pieces 2–5 green; pieces 1 and 6 red, so the gate is red.
 - Piece 1: `tabs-show-now.test.ts:128` [phone], expected `tiny-game-e8ff147e`, got `tiny-game-fcd9e9af`. Known main flake (review 3: 6 of 10 fails on main alone), already under Flaky tests.
 - Piece 6: `feed-controls.test.ts:536` [phone] "a reload whose kept feed is shorter than the fresh one…", a page error "Fetch API cannot load …/followed/__data.json?x-sveltekit-invalidated=01 due to access control checks." This is WebKit cutting off the Followed tab's data fetch at the reload. It is main's: main's own run 46137690606 at 2bef4f6 (no #454) failed the same test with the same error on its first try and passed on the retry. Locally at 40f4174 it passed 10 of 10. The test uses keys and a reload; #454 only listens for touch, pointer and wheel while a slide runs.
 
-Failed jobs started again at 11:41 UTC. The merge waits for that run to be green.
+Failed jobs started again at 11:41 UTC. On that try piece 6 passed and piece 1 failed `tabs-show-now.test.ts:128` [phone] again (expected `tiny-game-b92bdde0`, got `tiny-game-43c139aa`; job 140967002709), so the gate is still red at 12:01 UTC. That test fails 6 of 10 on main alone (review 3), so a PR run passes it only by luck; it needs its own fix on main. The merge waits for a green gate.
 
 ## Red
 
