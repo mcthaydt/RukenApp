@@ -1,4 +1,0 @@
-- Task: playtesting #460, fix round for implementation audit 1 (R1 old link → game page, R2 badge in overlap/fit, R3 not-yours route tests, R4 phone CI feed test)
-- Last commit: 457f6bb
-- Next step: push, watch CI (phone too), then hand to a fresh implementation audit
-- Open decisions: none
