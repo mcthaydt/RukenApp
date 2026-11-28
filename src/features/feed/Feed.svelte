@@ -18,7 +18,7 @@
   import { snapshot } from "$app/navigation";
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
-  import { clampClip, currentOf, stepFor } from "./current.ts";
+  import { CURRENT_AT, clampClip, currentOf, stepFor } from "./current.ts";
   import GoodPick from "./GoodPick.svelte";
   import FeedTop from "./FeedTop.svelte";
   import FollowBadge from "./FollowBadge.svelte";
@@ -276,6 +276,15 @@
     if (warm && next !== null && more === "idle" && current >= clips.length - ASK_AHEAD) void loadMore();
   });
 
+  /** Whether a screen fills the share of the feed's window that makes it the one a person is on, measured now. */
+  function fillsWindow(screen: HTMLElement | null | undefined): boolean {
+    if (!screen || !feed) return false;
+    const view = feed.getBoundingClientRect();
+    const box = screen.getBoundingClientRect();
+    const shown = Math.min(box.bottom, view.bottom) - Math.max(box.top, view.top);
+    return box.height > 0 && shown / box.height >= CURRENT_AT;
+  }
+
   async function loadMore(): Promise<void> {
     if (next === null) return;
     more = "loading";
@@ -286,8 +295,10 @@
       const have = new Set(clips.map((clip) => clip.key));
       const had = clips.length;
       // Whether the person is on the spinner. The browser keeps a snapped screen in view when what is above it grows, so
-      // without a move they would stay on the spinner as it went down the page, and it would ask again and again.
-      const waiting = current >= had;
+      // without a move they would stay on the spinner as it went down the page, and it would ask again and again. The
+      // watcher can be late on a busy phone (it tells only when the browser next draws), so the page can come while
+      // `current` is still the last clip though the spinner fills the window: the spinner's own place is looked at too.
+      const waiting = current >= had || fillsWindow(moreScreen);
       clips = [...clips, ...page.clips.filter((clip) => !have.has(clip.key))];
       if (page.ask) asks = { ...asks, [page.ask.key]: page.ask };
       if (page.caughtUp !== undefined) caughtUp = [...caughtUp, page.caughtUp];
