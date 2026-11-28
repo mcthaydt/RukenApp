@@ -52,6 +52,7 @@
         {#if data.reposted}<a class="go" href="/me/reposts">Your reposts</a>{/if}
       </li>
     {/if}
+    <li><a class="go" href="/me/name">Your name</a></li>
     <li><a class="go" href="/make">{data.makesGames ? "Your games" : "Add your games to Ruken"}</a></li>
     <li><a class="go" href="/settings/feed">Your feed</a></li>
     <li><a class="go" href="/me/password">Change password</a></li>

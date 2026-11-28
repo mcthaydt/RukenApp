@@ -4,7 +4,7 @@ import { HANDLE_MAX, HANDLE_MIN, RESERVED_HANDLES } from "./handle.ts";
 // the address rules in handle.ts (and the database's own check), whatever the name is.
 
 /** Zero-width spaces, joiners and the byte-order mark: they show nothing, so a name of only these is no name. */
-const INVISIBLE = /[​-‍⁠﻿]/g;
+const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF]/g;
 
 /** Room left for a hyphen and up to 6 digits when the first try is taken. */
 const WITH_DIGITS_MAX = HANDLE_MAX - 7;

@@ -629,11 +629,14 @@ describe("finishSignUp", () => {
 
   const jar = { [SIGN_UP_COOKIE]: "browser-value" };
 
-  it("checks the code with better-auth, finishes the account from what this browser kept, and goes on to next", async () => {
+  it("checks the code with better-auth, finishes the account from what this browser kept, and asks the name before next", async () => {
     const event = formEvent(BASE, "rk_session=old", jar);
     const formDeps = signUpDeps();
 
-    expect(await redirectOf(finishSignUp(event, formDeps))).toEqual({ status: 303, location: "/me" });
+    expect(await redirectOf(finishSignUp(event, formDeps))).toEqual({
+      status: 303,
+      location: "/me/name?next=%2Fme",
+    });
 
     const request = formDeps.handler.mock.calls[0]?.[0] as Request;
     expect(request.url).toBe(`${ORIGIN}/api/auth/phone-number/verify`);
@@ -771,12 +774,12 @@ describe("finishSignUp", () => {
     expect(formDeps.codeUsed).not.toHaveBeenCalled();
   });
 
-  it("sends a person to / when next points off the site", async () => {
+  it("sends a person on to / after the name when next points off the site", async () => {
     const result = finishSignUp(
       formEvent({ ...BASE, next: "https://evil.example" }, "rk_session=old", jar),
       signUpDeps(),
     );
-    await expect(result).rejects.toMatchObject({ status: 303, location: "/" });
+    await expect(result).rejects.toMatchObject({ status: 303, location: "/me/name?next=%2F" });
   });
 
   it("refuses a number that is not one", async () => {

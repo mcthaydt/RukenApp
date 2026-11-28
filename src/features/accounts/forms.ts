@@ -393,7 +393,8 @@ export async function finishSignUp(event: FormEvent, deps: SignUpDeps): Promise<
   }
   deps.codeUsed(number);
   event.cookies.delete(SIGN_UP_COOKIE, { path: SIGN_UP_COOKIE_PATH });
-  redirect(303, safeNextPath(form.next));
+  // A new account is asked the name friends see first (routes/me/name), then goes on to where it was going.
+  redirect(303, `/me/name?next=${encodeURIComponent(safeNextPath(form.next))}`);
 }
 
 /**
