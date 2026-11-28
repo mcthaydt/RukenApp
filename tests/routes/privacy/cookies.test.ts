@@ -16,6 +16,8 @@ const NOT_ON_THE_REAL_SITE: Record<string, string> = {
   rk_test_: "a Stripe key prefix",
   // Only a test machine with LAUNCH_TEST_SWITCH on reads it (launch/now.ts); the real site refuses to start with it.
   rk_test_launch: "test machines only",
+  // Only a test machine with PAGES_TEST_SWITCH on reads it (pages/editor-switch.ts); the real site refuses to start with it.
+  rk_test_pages: "test machines only",
   // better-auth's other cookies, renamed in auth.ts. The cookie cache is off, so none of these is ever set.
   rk_session_data: "better-auth's cookie cache, which is off",
   rk_account_data: "better-auth's cookie cache, which is off",

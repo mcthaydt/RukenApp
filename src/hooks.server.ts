@@ -14,6 +14,7 @@ import { setFileStore } from "./lib/server/files.ts";
 import { setFrameMaker } from "./lib/server/frames.ts";
 import { setPrivateRanker } from "./features/feed/feed.ts";
 import { setSendLimits } from "./features/sends/sends.ts";
+import { pageEditorGate } from "./features/pages/pages.ts";
 import { membershipServices } from "./features/membership/membership.ts";
 import { moneyServices } from "./features/money/money.ts";
 import { setPlatform } from "./lib/server/platform.ts";
@@ -41,9 +42,11 @@ setMoneyCheck(
 // never kept over http. databasePerRequest is next, so every route and form reaches its own request's database
 // client. The consent gate is next: a browser that has not said yes to cookies may not write to the database, keeps no
 // cookie and is sent from a gated page to the notice. createHandle then says who sent the request; it builds the sign-in services on the first request that needs them, so
-// /healthz answers without them.
+// /healthz answers without them. The page editor's gate is before the database too: while making a page waits for the
+// Pages slice, a form sent to it is refused before anything can read or write.
 export const handle = sequence(
   httpsOnly(() => requireEnv("BETTER_AUTH_URL", process.env)),
+  pageEditorGate(),
   databasePerRequest(),
   consentGate(allowWrites),
   createHandle(() => authServices().handleDeps),

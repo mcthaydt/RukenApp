@@ -147,6 +147,10 @@ export default defineConfig({
         // Decision day is off in the journeys, so a game the Owner lets in goes live at once, whatever day it runs.
         // The site refuses this setting unless its own address is this machine.
         DECISION_DAYS_TEST_OFF: "on",
+        // Making your page is closed on the real site until the Pages slice (src/features/pages/editor-switch.ts). The
+        // journeys' site keeps it open so its journeys keep running; a cookie makes one browser see it closed. The
+        // site refuses this setting unless its own address is this machine.
+        PAGES_TEST_SWITCH: "on",
       },
     },
     {

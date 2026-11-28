@@ -54,7 +54,7 @@
   <!-- Your page, the agreement a maker accepted before their first game, kept where they can read it again, and the
        guides: → links on one line, wrapping on a phone. -->
   <p class="ways">
-    <a class="go" href="/make/page">Your page</a>
+    {#if data.pageEditor}<a class="go" href="/make/page">Your page</a>{/if}
     <a class="go" href="/legal/maker-agreement">Maker agreement</a>
     <a class="go" href="/help">Help for makers</a>
   </p>

@@ -154,7 +154,7 @@
     </ol>
   </section>
 
-  {#each MORE as section (section.id)}
+  {#each MORE.filter((section) => data.pageEditor || section.id !== "fans") as section (section.id)}
     <section class="plain band" id={section.id} aria-labelledby={`${section.id}-title`}>
       <div>
         <p class="forwhom">{section.forWhom}</p>

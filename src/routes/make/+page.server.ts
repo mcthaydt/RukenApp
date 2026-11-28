@@ -1,6 +1,7 @@
 import { redirect } from "@sveltejs/kit";
 import { signedInOnly } from "../../features/accounts/accounts.ts";
 import { acceptanceWords, GameError, gamesServices } from "../../features/games/games.ts";
+import { pageEditorOpen } from "../../features/pages/pages.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
 // The maker's area: their games, each with where it stands in words. Signed out, to sign-in and back. A connection to
@@ -24,6 +25,8 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     // Measured from staff's decisions on every look, never typed.
     acceptance: acceptanceWords(await games.service.acceptance()),
     githubFailed: url.searchParams.get("github") === "failed",
+    // Making your page waits for the Pages slice (features/pages/editor-switch.ts), so there is no way to it yet.
+    pageEditor: pageEditorOpen(cookies),
     thrown,
   };
 };

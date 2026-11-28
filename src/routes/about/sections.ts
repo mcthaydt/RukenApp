@@ -61,7 +61,8 @@ export const AUDIENCES: readonly Section[] = [
     points: [
       "The feed brings you players. Your clip shows, and one tap plays your game.",
       "Send your game from GitHub in six short questions.",
-      "A good-looking page for you and for each game, made in minutes.",
+      // A page for the maker too comes back with the Pages slice (features/pages/editor-switch.ts).
+      "A good-looking page for each game, made in minutes.",
       "Get paid. Half of what members pay, after tax and fees, goes to makers, shared by how long they play.",
     ],
     links: [
@@ -118,6 +119,8 @@ export const STEPS = {
 /** The sections after the steps, one under another, each a heading, a few lines and at most one link. */
 export const MORE: readonly Section[] = [
   {
+    // About a maker's own page, so it is shown only while making one is open (features/pages/editor-switch.ts): the
+    // landing page says nothing a maker cannot do yet.
     id: "fans",
     forWhom: "For makers",
     // The strategy's pains: the dead end after a viral clip, and nobody treating a maker's own audience as theirs.

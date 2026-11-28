@@ -159,9 +159,11 @@
     Once it's live, players find it in the feed on Ruken's front page. It has its own link too, like
     ruken.io/g/your-game. Press See it on Ruken to get it.
   </p>
-  <p>
-    Make <a href="/make/page">your page</a> too. It shows all your games in one place, at ruken.io/your-name.
-  </p>
+  {#if data.pageEditor}
+    <p>
+      Make <a href="/make/page">your page</a> too. It shows all your games in one place, at ruken.io/your-name.
+    </p>
+  {/if}
 
   <h2>Change it later</h2>
   <p>

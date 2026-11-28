@@ -743,3 +743,9 @@ export async function likeById(userId: string, slug: string, on: boolean): Promi
 export async function unfollowById(followerId: string, makerId: string): Promise<void> {
   await db().makerFollow.deleteMany({ where: { followerId, makerId } });
 }
+
+/** Whether this person has a page of their own. */
+export async function hasPage(account: { number: string }): Promise<boolean> {
+  const userId = await userIdOf(account.number);
+  return (await db().makerPage.count({ where: { userId } })) > 0;
+}
