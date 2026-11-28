@@ -655,6 +655,55 @@ test("pressing the speaker flips sound for every clip, and it stays as set from 
   await expect(speaker).toHaveAttribute("aria-pressed", "false");
 });
 
+test("sound turned on stays on after a game's page and Back, by the page's arrow or the browser's own", async ({
+  page,
+}) => {
+  // The owner, 2026-11-28: "If it unmute, it should stay unmuted until I press mute again, it muted when I click game
+  // page and go back to feed".
+  await openFeed(page);
+  const speaker = soundButtons(page);
+  await speaker.click();
+  await expect(speaker).toHaveAttribute("aria-pressed", "true");
+  const clipIsHeard = () =>
+    expect
+      .poll(() =>
+        current(page)
+          .locator("video")
+          .evaluate((video: HTMLVideoElement) => video.muted),
+      )
+      .toBe(false);
+  await clipIsHeard();
+  // The feed has come back and finished its slide: a press while it slides is not a press on the clip.
+  const backOnTheFeed = async () => {
+    await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+    await expect(page.locator("html")).not.toHaveAttribute("data-sliding");
+    await wordsHaveSettled(page);
+  };
+
+  for (const back of ["the page's arrow", "the browser's Back"] as const) {
+    const clip = current(page);
+    const box = await boxOf(clip);
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.4);
+    await expect(page).toHaveURL(/\/g\//);
+    if (back === "the page's arrow") await page.getByRole("link", { name: "Back to the feed" }).click();
+    else await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+    await backOnTheFeed();
+    await expect(speaker, `after ${back}`).toHaveAttribute("aria-pressed", "true");
+    await clipIsHeard();
+  }
+
+  // Off again, it stays off the same way.
+  await speaker.click();
+  await expect(speaker).toHaveAttribute("aria-pressed", "false");
+  const box = await boxOf(current(page));
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.4);
+  await expect(page).toHaveURL(/\/g\//);
+  await page.goBack();
+  await backOnTheFeed();
+  await expect(speaker).toHaveAttribute("aria-pressed", "false");
+});
+
 test("the press that opens the game never covers the speaker, Play, Share, the two links or the bar", async ({
   page,
 }) => {

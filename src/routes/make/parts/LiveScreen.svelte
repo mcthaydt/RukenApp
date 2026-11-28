@@ -4,7 +4,9 @@
   version", which copies the newest files and sends them for review in the one press, or, once staff sent back a name,
   a line and it is mended, "Send it again", which sends the copy Ruken already holds, no copy from
   GitHub), or, while something that was sent back is to be fixed, the fix, with the send a quiet outline under it. While
-  one of those is still to mend there is no send at all. "See it on Ruken" opens the game's own page for players, a quiet link
+  one of those is still to mend there is no send at all. Test play, a blue outline under the send (never in the bar, and
+  never loaded ahead on hover, since loading it hands out a play pass), plays the files waiting for review or else the
+  live copy, never counted. "See it on Ruken" opens the game's own page for players, a quiet link
   above the way back (the blue button stays the send). At the foot, under the way back, the quietest link takes the game off Ruken (the agreement's first point). Beside them the game
   laid out sharp, with a Change on its name and its line only: its rating, files and videos go through
   staff again. Only the video of this window's shape is laid out, with the name, the line and the chip (who it is
@@ -25,6 +27,7 @@
     fixes,
     takeOffAddress,
     pageAddress,
+    testPlay,
     backdrop,
     game,
     showsPlayerCount,
@@ -41,6 +44,8 @@
     takeOffAddress: string;
     /** The game's own page, where players find it. */
     pageAddress: string;
+    /** Where the maker plays it themselves, or null when there is nothing to play. */
+    testPlay: string | null;
     backdrop: { upright: string | null; wide: string | null };
     game: LaidOutGame;
     /** Whether the game's page says how many people played it this week. */
@@ -126,6 +131,9 @@
     {:else if send !== "none"}
       <!-- A send waiting on the maker is what to do next, so it is the blue button, as on Sent back. -->
       {@render sendForm(true)}
+    {/if}
+    {#if testPlay !== null}
+      <a class="button outline testplay" data-sveltekit-preload-data="off" href={testPlay}>Test play</a>
     {/if}
     <a class="foot" href={pageAddress}>See it on Ruken</a>
     <a class="foot" href="/make">Back to your games</a>

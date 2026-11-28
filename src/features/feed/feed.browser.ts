@@ -11,3 +11,4 @@ export { default as MarkedGames } from "./MarkedGames.svelte";
 export type { ShareSheetControl } from "./share.ts";
 export { default as YourFeed } from "./YourFeed.svelte";
 export { default as FeedTop } from "./FeedTop.svelte";
+export { kept, sawYourTurn } from "./kept.svelte.ts";
