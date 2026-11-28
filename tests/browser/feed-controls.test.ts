@@ -683,7 +683,17 @@ test("sound turned on stays on after a game's page and Back, by the page's arrow
 }) => {
   // The owner, 2026-11-28: "If it unmute, it should stay unmuted until I press mute again, it muted when I click game
   // page and go back to feed".
+  // It opens this file's own game. The clip on top can be another journey's game, which that journey may rate 18+ while
+  // this one runs (adults-only.test.ts), and then its page asks a signed-out person to sign in and has no Back to the
+  // feed (CI on #451, tablet: the clip on top was rated 18+ between the feed and the press).
+  const [slug] = ours;
+  if (slug === undefined)
+    throw new Error("this file's beforeAll made no game, so there is no clip of its own to open");
   await openFeed(page);
+  const ourClip = page.locator(`section[data-slug="${slug}"]`).first();
+  await ourClip.scrollIntoViewIfNeeded();
+  await expect(ourClip).toHaveAttribute("data-current", "true");
+  await wordsHaveSettled(page);
   const speaker = soundButtons(page);
   await speaker.click();
   await expect(speaker).toHaveAttribute("aria-pressed", "true");
@@ -704,10 +714,10 @@ test("sound turned on stays on after a game's page and Back, by the page's arrow
   };
 
   for (const back of ["the page's arrow", "the browser's Back"] as const) {
-    const clip = current(page);
-    const box = await boxOf(clip);
+    await expect(ourClip).toHaveAttribute("data-current", "true");
+    const box = await boxOf(ourClip);
     await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.4);
-    await expect(page).toHaveURL(/\/g\//);
+    await expect(page).toHaveURL(`/g/${slug}`);
     if (back === "the page's arrow") await page.getByRole("link", { name: "Back to the feed" }).click();
     else await page.goBack();
     await expect(page).toHaveURL(/\/$/);
@@ -719,9 +729,10 @@ test("sound turned on stays on after a game's page and Back, by the page's arrow
   // Off again, it stays off the same way.
   await speaker.click();
   await expect(speaker).toHaveAttribute("aria-pressed", "false");
-  const box = await boxOf(current(page));
+  await expect(ourClip).toHaveAttribute("data-current", "true");
+  const box = await boxOf(ourClip);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.4);
-  await expect(page).toHaveURL(/\/g\//);
+  await expect(page).toHaveURL(`/g/${slug}`);
   await page.goBack();
   await backOnTheFeed();
   await expect(speaker).toHaveAttribute("aria-pressed", "false");

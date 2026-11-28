@@ -2347,6 +2347,15 @@ a.foot:active {
   }
 }
 
+/* Upright on a short phone (an iPhone SE, 375 by 667) a name that takes two lines put the last fact and its Change under
+   the bar: the rows were 20px apart, and the Change ended 6px into the bar (progress.md, Flaky tests). 12px apart, a
+   two-line name leaves the facts 10px clear of it. */
+@media (max-width: 499px) and (max-height: 699px) {
+  .screen:not(:has(.live)) .laid {
+    gap: 0.75rem;
+  }
+}
+
 /* Held sideways there are 244px above the bar on the shortest phone, so the rows of the name, the line and the facts are
    closer: the line is in view with the name, not half under the bar. */
 @media (max-height: 449px) {

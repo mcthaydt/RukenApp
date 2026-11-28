@@ -345,6 +345,11 @@ async function letGo(page: Page): Promise<void> {
  * patch at each of its corners, which a rounded box leaves out; and inside it, to show the clip is drawn at all. The patch
  * is 2 by 2: the card's corner reaches 20px (the owner, 2026-11-27: "less rounded"), about 13px a third of the way out,
  * and a 4 by 4 patch reaches past the part that corner leaves out.
+ *
+ * The page behind the clip is live while the move is held, so its other pictures can change between the two frames: a
+ * game page's video that comes in between them swaps its shimmer for its first frame, which once read as the clip
+ * spilling 1.7 to 2.1 over the whole window (progress.md, Flaky tests). So every picture that is not the clip is hidden
+ * in both frames: only the clip differs between them.
  */
 async function clipSpill(
   page: Page,
@@ -354,14 +359,19 @@ async function clipSpill(
     const at = new DOMMatrixReadOnly(style.transform === "none" ? undefined : style.transform);
     return { x: at.e, y: at.f, width: parseFloat(style.width), height: parseFloat(style.height) };
   });
+  // The clip is the feed's video (`video[data-grows]`) or the game page's box round its video (`[data-grows]`).
+  const stillBehind = await page.addStyleTag({
+    content: ":is(video, img):not([data-grows], [data-grows] *) { visibility: hidden !important; }",
+  });
   const shown = await page.screenshot({ animations: "allow", scale: "css" });
   const hiding = await page.addStyleTag({
     content: "::view-transition-old(clip), ::view-transition-new(clip) { visibility: hidden; }",
   });
   const bare = await page.screenshot({ animations: "allow", scale: "css" });
-  await hiding.evaluate((tag) => {
-    (tag as Element).remove();
-  });
+  for (const tag of [hiding, stillBehind])
+    await tag.evaluate((element) => {
+      (element as Element).remove();
+    });
   const spill = await page.evaluate(
     async ({ first, second, box, CORNER_PATCH }) => {
       const pixels = async (png: string) => {

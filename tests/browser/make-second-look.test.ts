@@ -530,18 +530,24 @@ test("on a phone Check and send shows the name, the line and every fact above th
   page,
 }) => {
   test.skip(layoutOf(page) !== "phone", "a phone held upright's own arrangement");
-  await startAtCheck(page);
+  const { slug } = await startAtCheck(page);
+  // A name that takes two lines on this phone. Each journey's game had a name of its own, and only some of them wrap, so
+  // this journey failed only now and then: the last fact's Change was 6px under the bar (progress.md, Flaky tests).
+  await changeGame(slug, { name: "Tiny game b0680d94" });
+  await page.goto(`/make/${slug}/check`);
+  await pageHasSettled(page);
   await layoutHasSettled(page);
+  const title = page.locator(".laid .title");
+  expect(await lineCount(title), "the name takes two lines").toBe(2);
 
   const bar = await boxOf(page.locator(".acts"));
   const tiles = await boxOf(page.locator(".tiles"));
-  for (const part of [
-    page.locator(".laid .title"),
-    page.locator(".laid .tagline"),
-    page.locator(".laid .chip").last(),
-  ]) {
-    const box = await boxOf(part);
-    expect(box.y + box.height, "ends above the bar").toBeLessThanOrEqual(bar.y);
+  // Each row, with its Change: the name, the line and every fact.
+  const rows = page.locator(".laid > div:not(.tiles), .laid li");
+  expect(await rows.count()).toBeGreaterThanOrEqual(5);
+  for (const row of await rows.all()) {
+    const box = await boxOf(row);
+    expect(box.y + box.height, `${await row.innerText()} ends above the bar`).toBeLessThanOrEqual(bar.y);
     expect(tiles.y, "the videos come after it").toBeGreaterThan(box.y);
   }
 });
